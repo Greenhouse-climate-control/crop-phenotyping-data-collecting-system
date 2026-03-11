@@ -1,0 +1,1664 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>📊 数据采集 - 得希表型采集系统</title>
+    <link rel="stylesheet" href="common.css?v=fix1">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .collection-card {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.92) 100%);
+            border-radius: var(--radius-2xl, 32px);
+            padding: 36px;
+            box-shadow: var(--shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.05), 0 20px 40px rgba(16, 185, 129, 0.1));
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+        }
+
+        .section-card {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(16, 185, 129, 0.15);
+            border-radius: var(--radius-xl, 24px);
+            margin-bottom: 24px;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(16, 185, 129, 0.06));
+            transition: var(--transition-normal, 250ms cubic-bezier(0.4, 0, 0.2, 1));
+        }
+
+        .section-card:hover {
+            box-shadow: var(--shadow-md, 0 4px 6px rgba(0, 0, 0, 0.04), 0 10px 15px rgba(16, 185, 129, 0.08));
+        }
+
+        .section-header {
+            background: linear-gradient(135deg, var(--color-primary-50, #ecfdf5) 0%, var(--color-primary-100, #d1fae5) 100%);
+            padding: 14px 20px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--color-primary-800, #065f46);
+            border-bottom: 2px solid var(--color-primary-400, #34d399);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* Toggle Icon */
+        .section-header::after {
+            content: '▼';
+            font-size: 0.9rem;
+            transition: transform 0.3s ease;
+        }
+
+        /* Collapsed State Styles */
+        .section-card.collapsed .section-header::after {
+            transform: rotate(-90deg);
+        }
+
+        .section-card.collapsed .section-header {
+            border-bottom-color: transparent;
+        }
+
+        .section-content {
+            padding: 24px;
+            max-height: 5000px;
+            opacity: 1;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: top;
+        }
+
+        .section-card.collapsed .section-content {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+
+        /* 隐藏数字输入框的箭头 */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type=number] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        .input-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+
+        .input-item {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: rgba(255, 255, 255, 0.6);
+            padding: 14px;
+            border-radius: var(--radius-lg, 16px);
+            border: 1px solid rgba(16, 185, 129, 0.08);
+            transition: var(--transition-normal, 250ms cubic-bezier(0.4, 0, 0.2, 1));
+        }
+
+        .input-item:hover {
+            border-color: rgba(16, 185, 129, 0.2);
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .input-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .input-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--color-primary-500, #10b981);
+            border-radius: var(--radius-sm, 8px);
+        }
+
+        .input-label {
+            font-size: 0.85rem;
+            color: var(--color-neutral-700, #404040);
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .input-range {
+            font-size: 0.72rem;
+            color: var(--color-neutral-500, #737373);
+            background: linear-gradient(135deg, var(--color-primary-50, #ecfdf5), var(--color-neutral-50, #fafafa));
+            padding: 4px 8px;
+            border-radius: var(--radius-full, 9999px);
+            white-space: nowrap;
+            font-weight: 500;
+        }
+
+        .input-field {
+            padding: 8px 12px;
+            border: 2px solid var(--color-neutral-200, #e5e5e5);
+            border-radius: var(--radius-md, 12px);
+            font-size: 0.9rem;
+            transition: var(--transition-normal, 250ms cubic-bezier(0.4, 0, 0.2, 1));
+            background-color: #fff;
+        }
+
+        /* 未选中/锁定状态：灰色 */
+        .input-field:disabled {
+            background: var(--color-neutral-100, #f5f5f5);
+            cursor: not-allowed;
+            color: var(--color-neutral-400, #a3a3a3);
+            border-color: var(--color-neutral-200, #e5e5e5);
+        }
+
+        /* 选中/活动状态 */
+        .input-field:not(:disabled) {
+            background: #fff;
+            border-color: var(--color-primary-400, #34d399);
+            box-shadow: 0 4px 8px -2px rgba(16, 185, 129, 0.12);
+        }
+
+        /* 输入了值的状态（通过 JS 添加 class） */
+        .input-field.has-value {
+            background: linear-gradient(135deg, var(--color-primary-50, #ecfdf5) 0%, #fff 100%);
+            color: var(--color-primary-900, #064e3b);
+            font-weight: 600;
+            border-color: var(--color-primary-500, #10b981);
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--color-primary-600, #059669);
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+        }
+
+        .input-field.error {
+            border-color: var(--color-accent-rose, #f43f5e) !important;
+            background: #fff5f5 !important;
+            color: #dc2626 !important;
+            box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.1);
+        }
+
+        .btn-primary {
+            background: var(--bg-gradient-button, linear-gradient(135deg, #10b981 0%, #059669 100%));
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: var(--radius-xl, 24px);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-normal, 250ms cubic-bezier(0.4, 0, 0.2, 1));
+            width: 100%;
+            margin-top: 24px;
+            box-shadow: var(--shadow-md, 0 4px 6px rgba(0, 0, 0, 0.04), 0 10px 15px rgba(16, 185, 129, 0.08));
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.05), 0 20px 40px rgba(16, 185, 129, 0.15));
+        }
+
+        .btn-primary:active {
+            transform: translateY(-1px);
+        }
+
+        .replicate-selector {
+            margin-bottom: 24px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.02) 100%);
+            border-radius: var(--radius-xl, 24px);
+            border: 1px solid rgba(16, 185, 129, 0.1);
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .replicate-selector select {
+            padding: 8px 14px;
+            border: 2px solid var(--color-primary-400, #34d399);
+            border-radius: var(--radius-lg, 16px);
+            font-size: 0.9rem;
+            cursor: pointer;
+            background: white;
+            color: var(--color-primary-800, #065f46);
+            font-weight: 500;
+            transition: var(--transition-normal, 250ms cubic-bezier(0.4, 0, 0.2, 1));
+        }
+
+        .replicate-selector select:hover {
+            border-color: var(--color-primary-500, #10b981);
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.15);
+        }
+
+        .replicate-selector select:focus {
+            outline: none;
+            border-color: var(--color-primary-600, #059669);
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+        }
+
+        @media (max-width: 768px) {
+            .collection-card {
+                padding: 20px;
+                border-radius: 20px;
+            }
+
+            .section-header {
+                padding: 15px 18px;
+                font-size: 1rem;
+            }
+
+            .section-content {
+                padding: 18px;
+            }
+
+            .input-group {
+                grid-template-columns: 1fr;
+                /* Stack inputs vertically */
+                gap: 15px;
+            }
+
+            .replicate-selector {
+                padding: 15px;
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .replicate-selector select {
+                width: 100%;
+            }
+
+            .btn-primary {
+                padding: 14px;
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .collection-card {
+                padding: 12px;
+                border-radius: 16px;
+            }
+
+            .section-card {
+                margin-bottom: 16px;
+                border-radius: 16px;
+            }
+
+            .section-header {
+                padding: 12px 15px;
+            }
+
+            .section-content {
+                padding: 15px;
+            }
+
+            .input-item {
+                padding: 12px;
+            }
+
+            #currentProjectDisplay {
+                font-size: 0.9rem;
+                display: block;
+                margin-top: 5px;
+                background: rgba(16, 185, 129, 0.1) !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation Bar -->
+    <nav class="nav-bar">
+        <div class="nav-links">
+            <a href="index.html" class="nav-link" title="首页">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+            </a>
+            <a href="calendar.html" class="nav-link" data-page="calendar" title="采集日历">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+            </a>
+            <a href="collection.html" class="nav-link" data-page="collection" title="数据采集">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                </svg>
+            </a>
+            <a href="trends.html" class="nav-link" data-page="trends" title="统计分析">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+            </a>
+            <a href="download.html" class="nav-link" data-page="download" title="数据下载">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+            </a>
+        </div>
+        <div class="user-area" id="navUserArea">
+            <button class="lang-switch" id="langSwitch" style="display: none;">🌐 EN</button>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Project Settings -->
+        <div style="margin-bottom: 16px; padding: 0 10px; display: flex; align-items: center; justify-content: center;">
+            <label
+                style="font-weight: 600; color: #065f46; display: flex; align-items: center; gap: 10px; font-size: 1.2rem;">
+                <span data-lang="collectionPage.currentProject">🌿 当前项目:</span>
+                <span id="currentProjectDisplay"
+                    style="color: #059669; background: #ecfdf5; padding: 5px 12px; border-radius: 8px;"></span>
+            </label>
+        </div>
+
+        <!-- Facility Settings Section -->
+        <div class="section-card collapsed" id="facilitySettingsCard">
+            <div class="section-header" onclick="toggleSection(this.parentElement)"
+                data-lang="collectionPage.facilitySettings">⚙️ 温室参数设置</div>
+            <div class="section-content">
+                <div class="input-group" id="constantInputs"></div>
+
+                <!-- Sample Names Management -->
+                <div
+                    style="margin-top: 20px; padding: 15px; background: #f0fdf4; border-radius: 12px; border: 1px solid #d1fae5;">
+                    <h4 style="margin: 0 0 15px 0; color: #065f46; font-size: 1rem;"
+                        data-lang="collectionPage.sampleNames">🌿 预设样本名称</h4>
+                    <div id="sampleNamesList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">
+                        <!-- Sample name tags will be rendered here -->
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: flex-start; flex-direction: column;">
+                        <div style="display: flex; gap: 10px; align-items: center; width: 100%;">
+                            <input type="text" id="newSampleNameInput" class="input-field"
+                                placeholder="输入样本名称 (e.g. A-1)" style="flex: 1; padding: 8px 12px; max-width: 200px;"
+                                data-lang-placeholder="collectionPage.addSamplePlaceholder"
+                                oninput="validateSampleNameInput(this)">
+                            <button class="btn-primary" onclick="addSampleName()"
+                                style="padding: 8px 16px; width: auto; margin-top: 0; font-size: 0.9rem;"
+                                data-lang="collectionPage.addBtn">
+                                + 添加
+                            </button>
+                        </div>
+                        <span id="sampleNameFormatHint" style="font-size: 0.8rem; color: #ef4444; display: none;">
+                            ⚠️ 格式错误，请使用「大写字母-数字」格式，如 A-1、AB-12
+                        </span>
+                    </div>
+                </div>
+
+                <button class="btn-primary" id="saveConstantsBtn" onclick="saveConstants()"
+                    style="margin-top: 20px; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);"
+                    data-lang="collectionPage.saveConstantsBtn">
+                    💾 保存参数
+                </button>
+            </div>
+        </div>
+
+        <!-- Weekly Data Section -->
+        <div class="section-card collapsed">
+            <div class="section-header" onclick="toggleSection(this.parentElement)"
+                style="display: flex; justify-content: space-between; align-items: center;">
+                <span data-lang="collectionPage.weeklyData">📊 每周数据</span>
+                <span id="weeklyHeaderInfo" style="font-size: 1rem; font-weight: 600; color: #10b981;"></span>
+            </div>
+            <div class="section-content">
+                <!-- Weekly Sample Management -->
+                <div class="replicate-selector" style="margin-bottom: 20px; padding: 15px;">
+                    <label style="font-weight: 600; color: #065f46;">
+                        <span data-lang="collectionPage.selectSample">选择样本:</span>
+                        <select id="weeklyReplicateSelect" style="min-width: 150px;"></select>
+                    </label>
+                </div>
+
+                <!-- No Sample Placeholder -->
+                <div id="noSamplePlaceholder" style="text-align: center; padding: 40px; color: #999; display: none;">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">🌱</div>
+                    <p data-lang="collectionPage.noSampleTitle">请先在「温室参数设置」中添加样本名称</p>
+                </div>
+
+                <div id="weeklyDataArea" style="display: none;">
+                    <div class="input-group" id="weeklyInputs"></div>
+                    <button class="btn-primary" id="saveWeeklyBtn" onclick="saveToDatabase('weekly')"
+                        style="margin-top: 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);"
+                        data-lang="collectionPage.saveWeeklyBtn">
+                        💾 保存周数据
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Data Section -->
+        <div class="section-card collapsed">
+            <div class="section-header" onclick="toggleSection(this.parentElement)"
+                style="display: flex; justify-content: space-between; align-items: center;">
+                <span data-lang="collectionPage.dailyData">📅 每日数据</span>
+                <span id="dailyHeaderInfo" style="font-size: 1rem; font-weight: 600; color: #8B5CF6;"></span>
+            </div>
+            <div class="section-content">
+                <!-- Daily Replicate Selector -->
+
+
+                <div class="input-group" id="dailyInputs"></div>
+                <button class="btn-primary" id="saveDailyBtn" onclick="saveToDatabase('daily')"
+                    style="margin-top: 20px; background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);"
+                    data-lang="collectionPage.saveDailyBtn">
+                    💾 保存日数据
+                </button>
+            </div>
+        </div>
+
+        <!-- ... -->
+
+    </div>
+
+    <!-- Custom Center Modal -->
+    <div id="customModalOverlay"
+        style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px); z-index: 10000; justify-content: center; align-items: center; padding: 20px;">
+
+        <div style="background: rgba(255, 255, 255, 0.95); width: 100%; max-width: 400px; border-radius: 24px; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.8);
+            overflow: hidden; animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; transform-origin: center;">
+
+            <div
+                style="padding: 24px 28px; border-bottom: 1px solid rgba(0,0,0,0.05); display: flex; align-items: center; gap: 16px;">
+                <div style="width: 48px; height: 48px; border-radius: 16px; background: #fffbeb; 
+                    display: flex; align-items: center; justify-content: center; flex-shrink: 0; 
+                    border: 1px solid #fcd34d;">
+                    <span style="font-size: 24px;">⚠️</span>
+                </div>
+                <div>
+                    <h3 id="modalTitle" style="margin: 0; font-size: 1.25rem; color: #1f2937; font-weight: 700;">提示</h3>
+                </div>
+            </div>
+
+            <div id="modalMessage" style="padding: 24px 28px; color: #4b5563; font-size: 1rem; line-height: 1.6;">
+                Message...
+            </div>
+
+            <div
+                style="padding: 20px 28px; background: #f9fafb; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid rgba(0,0,0,0.05);">
+                <button id="modalCancelBtn" style="padding: 10px 20px; border-radius: 14px; border: 1px solid #e5e7eb; background: white; 
+                    color: #4b5563; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                    取消
+                </button>
+                <button id="modalConfirmBtn" style="padding: 10px 24px; border-radius: 14px; border: none; 
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+                    color: white; font-weight: 600; cursor: pointer; 
+                    box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3); transition: all 0.2s;">
+                    确认提交
+                </button>
+            </div>
+        </div>
+    </div>
+    <style>
+        @keyframes popIn {
+            0% {
+                transform: scale(0.9) translateY(20px);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        #modalCancelBtn:hover {
+            background: #f3f4f6;
+            transform: translateY(-1px);
+        }
+
+        #modalConfirmBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 12px -2px rgba(16, 185, 129, 0.4);
+        }
+
+        #modalConfirmBtn:active {
+            transform: translateY(0);
+        }
+    </style>
+
+    <script src="common.js?v=fix42"></script>
+    <script>
+        setActiveNav('collection');
+
+        // Accordion: Only one section can be open at a time
+        function toggleSection(sectionCard) {
+            const allSections = document.querySelectorAll('.section-card');
+            const wasCollapsed = sectionCard.classList.contains('collapsed');
+
+            // Close all sections first
+            allSections.forEach(section => {
+                section.classList.add('collapsed');
+            });
+
+            // If the clicked section was collapsed, open it
+            if (wasCollapsed) {
+                sectionCard.classList.remove('collapsed');
+            }
+            // If it was already open, it stays closed (all closed now)
+        }
+
+        // Initialize Project Context
+        let currentProjectName = localStorage.getItem('currentProject');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!currentProjectName) {
+                // Fallback or Redirect
+                const last = localStorage.getItem('lastProjectName');
+                if (last) {
+                    currentProjectName = last;
+                    localStorage.setItem('currentProject', last);
+                } else {
+                    // Redirect to index if no project selected
+                    window.location.href = 'index.html';
+                    return;
+                }
+            }
+
+            // Display project name
+            const displayEl = document.getElementById('currentProjectDisplay');
+            if (displayEl) displayEl.textContent = currentProjectName;
+
+            // Display current week and date in headers
+            try {
+                const now = getBeijingTime();
+                const week = getWeekNumber(now);
+                const month = now.getMonth() + 1;
+                const day = now.getDate();
+                const weekday = now.getDay(); // 0=Sunday
+
+                const t = translations[currentLang];
+                if (t && t.dateFormats && t.weekdays) {
+                    const fmt = t.dateFormats;
+                    const weekdayName = t.weekdays[weekday];
+
+                    const weeklyHeader = document.getElementById('weeklyHeaderInfo');
+                    if (weeklyHeader) {
+                        weeklyHeader.textContent = `${fmt.weekPrefix}${week}${fmt.weekSuffix} ${fmt.weekdayWrapper[0]}${weekdayName}${fmt.weekdayWrapper[1]}`;
+                    }
+
+                    const dailyHeader = document.getElementById('dailyHeaderInfo');
+                    if (dailyHeader) {
+                        dailyHeader.textContent = `${month}${fmt.monthSuffix}${day}${fmt.daySuffix} ${fmt.weekdayWrapper[0]}${weekdayName}${fmt.weekdayWrapper[1]}`;
+                    }
+                }
+            } catch (e) {
+                console.error('Date header update failed:', e);
+            }
+        });
+
+
+        // 获取指标配置
+        let indicators = [];
+        try {
+            indicators = getIndicators();
+            // 强制移除所有默认值，确保输入框为空
+            indicators.forEach(ind => delete ind.defaultValue);
+            console.log('加载了', indicators.length, '个指标');
+        } catch (e) {
+            console.error('加载指标失败:', e);
+            alert('配置文件加载失败，请刷新页面');
+        }
+
+        // 动态样本管理
+        let maxWeeklyRep = 0; // Start with 0 samples - user must add one
+        let currentWeeklyRep = 0;
+        let maxDailyRep = 1;
+        let currentDailyRep = 1;
+
+        let collectionData = {};
+
+        // Initialize Data Structure
+        function initDataStructure() {
+            // Constants data cache
+            if (!collectionData.constants) collectionData.constants = {};
+        }
+
+        // Update Weekly section UI based on sample count
+        function updateWeeklyUIState() {
+            const placeholder = document.getElementById('noSamplePlaceholder');
+            const dataArea = document.getElementById('weeklyDataArea');
+
+            if (maxWeeklyRep === 0) {
+                // No samples - show placeholder, hide data area
+                if (placeholder) placeholder.style.display = 'block';
+                if (dataArea) dataArea.style.display = 'none';
+            } else {
+                // Has samples - hide placeholder, show data area
+                if (placeholder) placeholder.style.display = 'none';
+                if (dataArea) dataArea.style.display = 'block';
+            }
+        }
+
+        // 生成所有样本选择器
+        function generateReplicateSelectors() {
+            updateSelector('weekly');
+            updateSelector('daily');
+        }
+
+        function updateSelector(type) {
+            const max = type === 'weekly' ? maxWeeklyRep : maxDailyRep;
+            const current = type === 'weekly' ? currentWeeklyRep : currentDailyRep;
+            const selectId = type === 'weekly' ? 'weeklyReplicateSelect' : '';
+            if (type === 'daily') return; // Daily data has no selector
+
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            select.innerHTML = '';
+
+            // Weekly: show placeholder if no samples
+            if (type === 'weekly') {
+                updateWeeklyUIState();
+            }
+
+            if (max === 0) {
+                // No samples yet
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = '无样本';
+                option.disabled = true;
+                option.selected = true;
+                select.appendChild(option);
+                return;
+            }
+
+            for (let i = 1; i <= max; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                // Use predefined sample name if available
+                const sampleNames = collectionData.sampleNames || [];
+                const displayName = sampleNames[i - 1] || `样本 #${i}`;
+                option.textContent = displayName;
+                if (i === current) option.selected = true;
+                select.appendChild(option);
+            }
+
+            select.onchange = function () {
+                const val = parseInt(this.value);
+                if (type === 'weekly') {
+                    currentWeeklyRep = val;
+                } else {
+                    currentDailyRep = val;
+                }
+                loadDataForType(type, val);
+            };
+        }
+
+
+        // 生成输入框
+        function generateInputFields() {
+            const t = translations[currentLang].collectionPage;
+
+            const weeklyContainer = document.getElementById('weeklyInputs');
+            const dailyContainer = document.getElementById('dailyInputs');
+            const constantContainer = document.getElementById('constantInputs');
+
+            weeklyContainer.innerHTML = '';
+            dailyContainer.innerHTML = '';
+            if (constantContainer) constantContainer.innerHTML = '';
+
+            indicators.forEach(ind => {
+                if (ind.isStatistic) return;
+
+                let container;
+                if (ind.frequency === 'weekly') container = weeklyContainer;
+                else if (ind.frequency === 'daily') container = dailyContainer;
+                else if (ind.frequency === 'constant') container = constantContainer;
+                else return;
+
+                if (!container) return;
+
+                const item = document.createElement('div');
+                item.className = 'input-item';
+
+                // 创建头部
+                const header = document.createElement('div');
+                header.className = 'input-header';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'input-checkbox';
+                checkbox.id = `check-${ind.field}`;
+
+                const label = document.createElement('span');
+                label.className = 'input-label';
+                label.textContent = `${ind.name} (${ind.unit})`;
+
+                header.appendChild(checkbox);
+                header.appendChild(label);
+
+                // Show range only for limited fields
+                const unlimitedFields = ['dripper_count', 'acidity', 'daily_yield_kg', 'weekly_yield_kg', 'greenhouse_area_m2', 'damage_amount', 'total_dripper_count'];
+                if (!unlimitedFields.includes(ind.field)) {
+                    const rangeSpan = document.createElement('span');
+                    rangeSpan.className = 'input-range';
+                    rangeSpan.textContent = `[${ind.min}-${ind.max}]`;
+                    header.appendChild(rangeSpan);
+                }
+
+                // Input field
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.className = 'input-field';
+                input.id = `input-${ind.field}`;
+                input.placeholder = t.unlockInput;
+                input.min = ind.min;
+                input.max = ind.max;
+                input.step = ind.step;
+                input.disabled = true;
+
+                // Checkbox 控制
+                checkbox.onchange = function () {
+                    const unlimitedFields = ['dripper_count', 'acidity', 'daily_yield_kg', 'weekly_yield_kg', 'greenhouse_area_m2', 'damage_amount', 'total_dripper_count'];
+                    const isUnlimited = unlimitedFields.includes(ind.field);
+
+                    if (this.checked) {
+                        const allCheckboxes = document.querySelectorAll('.input-checkbox');
+                        allCheckboxes.forEach(cb => {
+                            if (cb !== this && cb.checked) {
+                                cb.checked = false;
+                                const otherInputId = cb.id.replace('check-', 'input-');
+                                const otherInput = document.getElementById(otherInputId);
+                                if (otherInput) {
+                                    otherInput.disabled = true;
+                                    otherInput.placeholder = t.locked;
+                                    otherInput.classList.remove('active-input');
+                                }
+                            }
+                        });
+
+                        input.disabled = false;
+                        if (isUnlimited) {
+                            input.placeholder = t.enterValue;
+                        } else {
+                            input.placeholder = `${t.enterValue}${ind.min}${t.to}${ind.max}`;
+                        }
+
+                        // 解锁后重新检查当前值是否超出范围，恢复 error 状态
+                        const currentVal = parseFloat(input.value);
+                        if (!isNaN(currentVal) && !isUnlimited && (currentVal < ind.min || currentVal > ind.max)) {
+                            input.classList.add('error');
+                        } else {
+                            input.classList.remove('error');
+                        }
+
+                        setTimeout(() => input.focus(), 10);
+                    } else {
+                        input.disabled = true;
+                        input.placeholder = t.unlockInput;
+
+                        // uncheck 时：若值超范围则保留红色，否则移除
+                        const currentVal = parseFloat(input.value);
+                        if (!isNaN(currentVal) && !isUnlimited && (currentVal < ind.min || currentVal > ind.max)) {
+                            input.classList.add('error');
+                        } else {
+                            input.classList.remove('error');
+                        }
+
+                        if (input.value === '') {
+                            const repId = ind.frequency === 'weekly' ? currentWeeklyRep :
+                                (ind.frequency === 'daily' ? currentDailyRep : 'constants');
+
+                            if (repId === 'constants') {
+                                if (collectionData.constants) collectionData.constants[ind.field] = null;
+                            } else {
+                                if (collectionData[repId]) collectionData[repId][ind.field] = null;
+                            }
+                            input.classList.remove('has-value');
+                        }
+                    }
+                };
+
+                // 输入验证与数据保存
+                input.oninput = function () {
+                    const val = parseFloat(this.value);
+                    const repId = ind.frequency === 'weekly' ? currentWeeklyRep :
+                        (ind.frequency === 'daily' ? currentDailyRep : 'constants');
+
+                    if (isNaN(val)) {
+                        this.classList.remove('has-value');
+                        if (repId === 'constants') {
+                            if (collectionData.constants) collectionData.constants[ind.field] = null;
+                        } else {
+                            if (collectionData[repId]) collectionData[repId][ind.field] = null;
+                        }
+                        this.classList.remove('error');
+                        return;
+                    }
+
+                    this.classList.add('has-value');
+
+                    const unlimitedFields = ['dripper_count', 'acidity', 'daily_yield_kg', 'weekly_yield_kg', 'greenhouse_area_m2', 'damage_amount', 'total_dripper_count'];
+                    const isUnlimited = unlimitedFields.includes(ind.field);
+
+                    if (!isUnlimited && (val < ind.min || val > ind.max)) {
+                        this.classList.add('error');
+                    } else {
+                        this.classList.remove('error');
+                    }
+
+                    if (repId === 'constants') {
+                        if (!collectionData.constants) collectionData.constants = {};
+                        collectionData.constants[ind.field] = val;
+                    } else {
+                        if (!collectionData[repId]) collectionData[repId] = {};
+                        collectionData[repId][ind.field] = val;
+                    }
+                };
+
+                input.onblur = function () { };
+
+                item.appendChild(header);
+                item.appendChild(input);
+                container.appendChild(item);
+            });
+        }
+
+        // 加载指定类型的数据
+        function loadDataForType(type, repId) {
+            const t = translations[currentLang].collectionPage;
+
+            indicators.forEach(ind => {
+                if (ind.frequency !== type) return;
+
+                if (ind.isStatistic || ind.isConstant) return;
+
+                const input = document.getElementById(`input-${ind.field}`);
+                const checkbox = document.getElementById(`check-${ind.field}`);
+
+                if (input && checkbox) {
+                    // Safe access
+                    if (!collectionData[repId]) collectionData[repId] = {};
+                    const value = collectionData[repId][ind.field];
+
+                    if (value !== null && value !== undefined) {
+                        // 有数据：显示值，但保持非活动状态（checkbox unchecked, input disabled）
+                        // 这样符合互斥原则，且用户一眼能看到已有数据
+
+                        checkbox.checked = false;
+                        input.disabled = true;
+
+                        input.value = value;
+                        input.classList.add('has-value');
+
+                        const unlimitedFields = ['dripper_count', 'acidity', 'daily_yield_kg', 'weekly_yield_kg', 'greenhouse_area_m2', 'damage_amount', 'total_dripper_count'];
+                        const isUnlimited = unlimitedFields.includes(ind.field);
+                        if (!isUnlimited && (value < ind.min || value > ind.max)) {
+                            input.classList.add('error');
+                        } else {
+                            input.classList.remove('error');
+                        }
+                    } else {
+                        checkbox.checked = false;
+                        input.disabled = true;
+                        input.value = '';
+                        input.placeholder = t.unlockInput;
+                        input.classList.remove('has-value');
+                        input.classList.remove('error');
+                    }
+                }
+            });
+        }
+
+        // Custom Modal Logic
+        function showCustomConfirm(title, messageHtml, onConfirm, onCancel) {
+            const overlay = document.getElementById('customModalOverlay');
+            const titleEl = document.getElementById('modalTitle');
+            const msgEl = document.getElementById('modalMessage');
+            const confirmBtn = document.getElementById('modalConfirmBtn');
+            const cancelBtn = document.getElementById('modalCancelBtn');
+
+            titleEl.textContent = title;
+            msgEl.innerHTML = messageHtml;
+
+            overlay.style.display = 'flex';
+
+            // Reset listeners
+            const newConfirm = confirmBtn.cloneNode(true);
+            const newCancel = cancelBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+            cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+            newConfirm.onclick = () => {
+                overlay.style.display = 'none';
+                if (onConfirm) onConfirm();
+            };
+
+            newCancel.onclick = () => {
+                overlay.style.display = 'none';
+                if (onCancel) onCancel();
+            };
+        }
+
+        function asyncConfirm(title, message) {
+            return new Promise((resolve) => {
+                showCustomConfirm(title, message, () => resolve(true), () => resolve(false));
+            });
+        }
+
+        // Simple alert using the custom modal (no cancel button)
+        function showAlert(title, messageHtml, onClose) {
+            const overlay = document.getElementById('customModalOverlay');
+            const titleEl = document.getElementById('modalTitle');
+            const msgEl = document.getElementById('modalMessage');
+            const confirmBtn = document.getElementById('modalConfirmBtn');
+            const cancelBtn = document.getElementById('modalCancelBtn');
+
+            titleEl.textContent = title;
+            msgEl.innerHTML = messageHtml;
+            cancelBtn.style.display = 'none';
+            confirmBtn.textContent = '确 定';
+
+            overlay.style.display = 'flex';
+
+            const newConfirm = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+
+            newConfirm.onclick = () => {
+                overlay.style.display = 'none';
+                // Restore cancel button for future confirms
+                cancelBtn.style.display = '';
+                newConfirm.textContent = '确认提交';
+                if (onClose) onClose();
+            };
+        }
+
+        // 保存到数据库
+        async function saveToDatabase(type) {
+            if (!currentUser || currentUser.is_guest) {
+                alert('请先登录');
+                return;
+            }
+
+            const btn = document.getElementById(type === 'weekly' ? 'saveWeeklyBtn' : 'saveDailyBtn');
+            if (!btn) return;
+
+            const originalText = btn.textContent;
+            btn.textContent = '⏳ 保存中...';
+            btn.disabled = true;
+
+            try {
+                // --- 强制检查温室参数设置 ---
+                const area = collectionData.constants?.greenhouse_area_m2;
+                const dripper = collectionData.constants?.dripper_count;
+
+                if (!area || area <= 0 || !dripper || dripper <= 0) {
+                    alert('⚠️ 请先在「温室参数设置」中填入【滴箭个数】和【温室面积】并保存，否则无法进行后续计算。');
+                    toggleSection(document.getElementById('facilitySettingsCard')); // 自动展开设置区域
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                    return;
+                }
+
+                const now = getBeijingTime();
+                const year = now.getFullYear();
+                const week = getWeekNumber(now);
+                const date = now.toISOString().split('T')[0];
+
+                // Determine Sample Name and Data Source
+                let sampleName = '';
+                let currentRep = 0;
+
+                if (type === 'weekly') {
+                    currentRep = currentWeeklyRep;
+                    if (currentRep === 0) throw new Error('请选择样本');
+
+                    const names = collectionData.sampleNames || [];
+                    sampleName = names[currentRep - 1]; // 1-based index to 0-based array
+
+                    if (!sampleName) throw new Error('无法确定样本名称，请先配置样本');
+                } else {
+                    currentRep = 1; // Daily data uses slot 1
+                }
+
+                // Prepare Payload
+                const payload = {
+                    user_id: currentUser.id,
+                    project_name: currentProjectName, // 项目隔离
+                };
+
+                if (type === 'weekly') {
+                    payload.sample_name = sampleName;
+                }
+
+                // Add Time/Date Info
+                if (type === 'weekly') {
+                    payload.date = date;
+                    payload.year = year;
+                    payload.week = week;
+                } else {
+                    payload.date = date;
+                    payload.year = year;
+                    payload.week = week;
+                }
+
+                // Collect Indicator Data
+                if (!collectionData[currentRep]) collectionData[currentRep] = {};
+                const currentData = collectionData[currentRep];
+                let hasData = false;
+                let hasAnyIndicator = false; // 是否处理了至少一个有效指标字段
+                let missingFields = [];
+
+                indicators.forEach(ind => {
+                    // Only process indicators matching the current frequency (type)
+                    // And ignore constants/statistics (readonly)
+                    if (ind.frequency !== type) return;
+                    if (ind.isStatistic || ind.isConstant) return;
+
+                    const cnName = translations['zh'].indicators[ind.field];
+                    if (!cnName) return;
+
+                    hasAnyIndicator = true; // 找到了至少一个有效指标字段
+
+                    const value = currentData[ind.field];
+                    // Check strict null/undefined/empty string
+                    if (value !== null && value !== undefined && value !== '') {
+                        payload[cnName] = value;
+                        hasData = true;
+                    } else {
+                        // 显式写入 null，以清除数据库中的旧值（用户删除数据的场景）
+                        payload[cnName] = null;
+                        // Collect missing field name for warning
+                        missingFields.push(ind.name);
+                    }
+                });
+
+                // 只有当没有任何可处理的指标字段时才报错（配置问题）
+                // 用户清空所有数据的场景（hasAnyIndicator=true 但 hasData=false）允许通过，
+                // 后续的 missingFields 确认弹窗会让用户二次确认
+                if (!hasAnyIndicator) throw new Error('没有可保存的数据');
+
+                // Check completeness
+                if (missingFields.length > 0) {
+                    const title = '数据不完整提醒';
+                    const message = `当前有 <strong style="color: #ef4444;">${missingFields.length}</strong> 项数据未填报：<br/><br/>` +
+                        `<div style="max-height: 100px; overflow-y: auto; background: #f3f4f6; padding: 10px; border-radius: 8px; font-size: 0.9rem; color: #374151;">${missingFields.join('、')}</div><br/>` +
+                        `是否确认提交？`;
+
+                    const confirmed = await asyncConfirm(title, message);
+                    if (!confirmed) {
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                        return;
+                    }
+                }
+
+                // Target Table and Conflict Key
+                const tableName = type === 'weekly' ? 'weekly_phenotypes' : 'daily_phenotypes';
+                // Schema V2 Unique Constraints:
+                // Weekly: (user_id, project_name, year, week, sample_name)
+                // Daily: (user_id, project_name, date)
+                const conflictKey = type === 'weekly'
+                    ? 'user_id, project_name, year, week, sample_name'
+                    : 'user_id, project_name, date';
+
+                // Send Request
+                const { error } = await supabase
+                    .from(tableName)
+                    .upsert(payload, { onConflict: conflictKey });
+
+                if (error) throw error;
+
+                btn.textContent = '✅ 保存成功';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                    // Reload to reflect computed fields (like accumulators)
+                    loadFromDatabase();
+                }, 1000);
+
+            } catch (err) {
+                console.error('保存失败:', err);
+                alert('保存失败: ' + err.message);
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+
+
+        // 从数据库加载数据
+        async function loadFromDatabase() {
+            if (!currentUser || currentUser.is_guest) {
+                console.log('游客模式，跳过数据加载');
+                return;
+            }
+
+            // 先加载 Constants (包含 sampleNames)
+            await loadConstants();
+
+            try {
+                const now = getBeijingTime();
+                const year = now.getFullYear();
+                const week = getWeekNumber(now);
+                const date = now.toISOString().split('T')[0];
+
+                const [weeklyResult, dailyResult] = await Promise.all([
+                    supabase.from('weekly_phenotypes')
+                        .select('*')
+                        .eq('user_id', currentUser.id)
+                        .eq('project_name', currentProjectName)
+                        .eq('year', year)
+                        .eq('week', week),
+                    supabase.from('daily_phenotypes')
+                        .select('*')
+                        .eq('user_id', currentUser.id)
+                        .eq('project_name', currentProjectName)
+                        .eq('date', date)
+                ]);
+
+                // V2: Update global counters based on Settings, not DB Data
+                const sampleNames = collectionData.sampleNames || [];
+                maxWeeklyRep = Math.max(0, sampleNames.length);
+                maxDailyRep = 1; // Daily is always 1 (Facility)
+
+                // Ensure slots exist
+                for (let i = 1; i <= maxWeeklyRep; i++) {
+                    if (!collectionData[i]) collectionData[i] = {};
+                }
+                if (!collectionData[1]) collectionData[1] = {};
+
+                // 重建下拉菜单
+                generateReplicateSelectors();
+
+                // 填充数据 - Weekly
+                // 现在需要根据 sample_name 匹配预设样本列表的索引
+                if (!weeklyResult.error && weeklyResult.data) {
+                    const sampleNames = collectionData.sampleNames || [];
+
+                    weeklyResult.data.forEach(row => {
+                        const sampleName = row.sample_name;
+                        // 查找此 sample_name 在预设列表中的索引
+                        const idx = sampleNames.indexOf(sampleName);
+                        if (idx === -1) {
+                            console.log('跳过未知样本:', sampleName);
+                            return; // 跳过不在预设列表中的数据
+                        }
+
+                        const repId = idx + 1; // 转换为 1-based index
+                        if (!collectionData[repId]) collectionData[repId] = {};
+
+                        // Store sample name for reference
+                        collectionData[repId].sample_name = sampleName;
+
+                        indicators.forEach(ind => {
+                            if (ind.frequency === 'weekly') {
+                                const cnName = translations['zh'].indicators[ind.field];
+                                const val = row[cnName];
+                                if (val !== undefined && val !== null) {
+                                    collectionData[repId][ind.field] = val;
+                                }
+                            }
+                        });
+                    });
+                }
+
+                if (!dailyResult.error && dailyResult.data) {
+                    dailyResult.data.forEach(row => {
+                        // Force all daily data to replicate 1
+                        const repId = 1;
+                        if (!collectionData[repId]) collectionData[repId] = {};
+
+                        indicators.forEach(ind => {
+                            if (ind.frequency === 'daily') {
+                                const cnName = translations['zh'].indicators[ind.field];
+                                const val = row[cnName];
+                                if (val !== undefined && val !== null) {
+                                    collectionData[repId][ind.field] = val;
+                                }
+                            }
+                        });
+                    });
+                }
+
+                console.log('数据加载完成');
+                // 刷新当前视图
+                loadDataForType('weekly', currentWeeklyRep);
+                loadDataForType('daily', currentDailyRep);
+
+            } catch (error) {
+                console.error('数据加载失败:', error);
+            }
+        }
+
+        async function loadConstants() {
+            try {
+                const { data, error } = await supabase
+                    .from('facility_settings')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .eq('project_name', currentProjectName) // Filter by project
+                    .single();
+
+                if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "No rows found"
+
+                let needsSetup = false;
+
+                if (data) {
+                    if (!collectionData.constants) collectionData.constants = {};
+                    indicators.forEach(ind => {
+                        if (ind.frequency === 'constant') {
+                            const cnName = translations['zh'].indicators[ind.field];
+                            const val = data[cnName];
+
+                            if (val !== undefined && val !== null && val !== "") {
+                                collectionData.constants[ind.field] = val;
+
+                                // Update UI
+                                const input = document.getElementById(`input-${ind.field}`);
+                                const checkbox = document.getElementById(`check-${ind.field}`);
+                                if (input && checkbox) {
+                                    checkbox.checked = false;
+                                    input.disabled = true;
+                                    input.value = val;
+                                    input.classList.add('has-value');
+                                }
+                            } else {
+                                // Clear UI if no value
+                                const input = document.getElementById(`input-${ind.field}`);
+                                if (input) {
+                                    input.value = '';
+                                    input.classList.remove('has-value');
+                                }
+                            }
+                        }
+                    });
+
+                    // Load sample names
+                    collectionData.sampleNames = (data.sample_names && Array.isArray(data.sample_names)) ? data.sample_names : [];
+                    renderSampleNames();
+                    updateWeeklySelectorWithPredefinedNames();
+
+                    // Check if critical settings are missing
+                    const area = data["温室面积"];
+                    const dripperCount = data["滴箭个数"];
+                    if (!area || area <= 0 || !dripperCount || dripperCount <= 0) {
+                        needsSetup = true;
+                    }
+                }
+                else {
+                    // No facility settings yet
+                    collectionData.sampleNames = [];
+                    renderSampleNames();
+                    needsSetup = true;
+                }
+
+                // Show warning if setup needed
+                if (needsSetup) {
+                    showSetupWarning();
+                }
+            } catch (err) {
+                console.error('加载参数失败:', err);
+            }
+        }
+
+        function showSetupWarning() {
+            // Auto-open Facility Settings section
+            const allSections = document.querySelectorAll('.section-card');
+            allSections.forEach((section, index) => {
+                if (index === 0) { // First section is Facility Settings
+                    section.classList.remove('collapsed');
+                } else {
+                    section.classList.add('collapsed');
+                }
+            });
+
+            // Use global showModal
+            showModal({
+                title: '请先设置温室参数',
+                message: '温室面积尚未设定，这将影响「单位产量」的计算。<br>请在「温室参数设置」中填写温室面积后保存。',
+                icon: '⚠️',
+                buttonText: '去设置',
+                onClose: () => {
+                    // Scroll to Facility Settings section
+                    const facilitySection = document.querySelector('.section-card');
+                    if (facilitySection) {
+                        facilitySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            });
+        }
+
+        // Sample Names Management
+        function renderSampleNames() {
+            const container = document.getElementById('sampleNamesList');
+            if (!container) return;
+
+            const names = collectionData.sampleNames || [];
+            const SAMPLE_NAME_RE = /^[A-Z]+-\d+$/;
+
+            if (names.length === 0) {
+                container.innerHTML = '<span style="color: #999; font-size: 0.9rem;">暂无预设样本</span>';
+                return;
+            }
+
+            container.innerHTML = names.map((name, index) => {
+                const isValid = SAMPLE_NAME_RE.test(name);
+                const nameColor = isValid ? '#065f46' : '#ef4444';
+                const borderColor = isValid ? '#d1fae5' : '#fca5a5';
+                const bgColor = isValid ? 'white' : '#fff1f2';
+                const tooltip = isValid ? '' : 'title="格式不正确：应为大写字母-数字，如 A-1"';
+                return `
+                <span ${tooltip} style="display: inline-flex; align-items: center; gap: 6px;
+                    background: ${bgColor}; border: 1px solid ${borderColor}; padding: 6px 12px;
+                    border-radius: 20px; font-size: 0.9rem; color: ${nameColor};">
+                    ${isValid ? '' : '⚠️ '}${name}
+                    <button onclick="removeSampleName(${index})"
+                        style="background: none; border: none; cursor: pointer;
+                        color: #999; font-size: 1rem; padding: 0; line-height: 1;">×</button>
+                </span>
+            `;
+            }).join('');
+        }
+
+        function validateSampleNameInput(input) {
+            const SAMPLE_NAME_RE = /^[A-Z]+-\d+$/;
+            const hint = document.getElementById('sampleNameFormatHint');
+            const val = input.value.trim();
+            const existingNames = collectionData.sampleNames || [];
+            const isDuplicate = existingNames.includes(val);
+            const isValidFormat = SAMPLE_NAME_RE.test(val);
+
+            if (val === '') {
+                input.style.borderColor = '';
+                input.style.color = '';
+                if (hint) hint.style.display = 'none';
+            } else if (isDuplicate) {
+                input.style.borderColor = '#ef4444';
+                input.style.color = '#ef4444';
+                if (hint) {
+                    hint.textContent = `⚠️ 「${val}」已存在，请勿重复添加`;
+                    hint.style.display = 'block';
+                }
+            } else if (!isValidFormat) {
+                input.style.borderColor = '#ef4444';
+                input.style.color = '';
+                if (hint) {
+                    hint.textContent = '⚠️ 格式错误，请使用「大写字母-数字」格式，如 A-1、AB-12';
+                    hint.style.display = 'block';
+                }
+            } else {
+                input.style.borderColor = '#10b981';
+                input.style.color = '';
+                if (hint) hint.style.display = 'none';
+            }
+        }
+
+        async function addSampleName() {
+            const SAMPLE_NAME_RE = /^[A-Z]+-\d+$/;
+            const input = document.getElementById('newSampleNameInput');
+            const name = input.value.trim();
+
+            if (!name) {
+                alert('请输入样本名称');
+                return;
+            }
+
+            if (!SAMPLE_NAME_RE.test(name)) {
+                showAlert(
+                    '⚠️ 格式不正确',
+                    `样本名称格式错误！<br><br>
+                    请使用 <strong>「大写字母-数字」</strong> 格式，例如：<br>
+                    <span style="background:#f0fdf4;padding:4px 10px;border-radius:8px;font-family:monospace;">A-1&nbsp;&nbsp;A-2&nbsp;&nbsp;B-10&nbsp;&nbsp;AB-3</span><br><br>
+                    不允许使用小写字母、中文或其他格式。`,
+                    () => { input.focus(); }
+                );
+                input.style.borderColor = '#ef4444';
+                return;
+            }
+
+            if (!collectionData.sampleNames) collectionData.sampleNames = [];
+
+            if (collectionData.sampleNames.includes(name)) {
+                const suggest = name.replace(/\d+$/, n => parseInt(n) + 1);
+                showAlert(
+                    '⚠️ 名称重复',
+                    `「<strong>${name}</strong>」已经在列表中，不能重复添加。<br><br>
+                    建议更换为：<span style="background:#f0fdf4;padding:2px 10px;border-radius:8px;font-family:monospace;">${suggest}</span>`,
+                    () => { input.focus(); }
+                );
+                input.style.borderColor = '#ef4444';
+                return;
+            }
+
+            collectionData.sampleNames.push(name);
+            input.value = '';
+
+            // Render immediately
+            renderSampleNames();
+            updateWeeklySelectorWithPredefinedNames();
+
+            // Auto save
+            await saveConstants();
+        }
+
+        async function removeSampleName(index) {
+            if (!collectionData.sampleNames) return;
+
+            const sampleName = collectionData.sampleNames[index];
+            const repId = index + 1; // Database ID matches 1-based index
+
+            const confirmed = confirm(`确定要删除样本 "${sampleName}" 吗？\n\n⚠️ 警告：这将永久删除该样本关联的所有历史数据（包括每周和每日数据），并且后续样本的编号会自动前移。此操作不可撤销！`);
+
+            if (!confirmed) return;
+
+            try {
+                // 1. Call Database RPC to delete sample data (V2: Delete by name)
+                const { error } = await supabase.rpc('delete_sample_data', { target_sample_name: sampleName });
+
+                if (error) {
+                    throw error;
+                }
+
+                // 2. Update local array
+                collectionData.sampleNames.splice(index, 1);
+
+                // 3. Render
+                renderSampleNames();
+                updateWeeklySelectorWithPredefinedNames();
+
+                // 4. Update maxReplicateId if needed (since we reduced total)
+                if (maxReplicateId > collectionData.sampleNames.length) {
+                    maxReplicateId = collectionData.sampleNames.length;
+                }
+
+                // 5. Auto Save updated list
+                await saveConstants();
+
+                // 6. Refresh data view (since IDs shifted, current data might be wrong)
+                // Reload current replicate data 
+                loadFromDatabase();
+
+                alert('样本及数据已删除');
+
+            } catch (err) {
+                console.error('删除样本失败:', err);
+                alert('删除失败: ' + err.message);
+            }
+        }
+
+        function updateWeeklySelectorWithPredefinedNames() {
+            // This updates the Weekly section to use predefined sample names
+            maxWeeklyRep = collectionData.sampleNames ? collectionData.sampleNames.length : 0;
+            // If we deleted the last one and current is out of bound
+            if (currentWeeklyRep > maxWeeklyRep && maxWeeklyRep > 0) {
+                currentWeeklyRep = maxWeeklyRep;
+            } else if (currentWeeklyRep === 0 && maxWeeklyRep > 0) {
+                currentWeeklyRep = 1;
+            }
+            // Ensure UI is updated
+            updateSelector('weekly');
+        }
+
+        async function saveConstants() {
+            if (!currentUser || currentUser.is_guest) {
+                alert('请先登录');
+                return;
+            }
+
+            const btn = document.getElementById('saveConstantsBtn');
+            const originalText = btn.textContent;
+            btn.textContent = '⏳ 保存中...';
+            btn.disabled = true;
+
+            try {
+                // 1. 检查温室面积是否变化
+                const newArea = collectionData.constants?.greenhouse_area_m2;
+                let oldArea = null;
+
+                // 从数据库获取旧值
+                const { data: existingSettings } = await supabase
+                    .from('facility_settings')
+                    .select('温室面积')
+                    .eq('user_id', currentUser.id)
+                    .eq('project_name', currentProjectName)
+                    .single();
+
+                if (existingSettings) {
+                    oldArea = existingSettings['温室面积'];
+                }
+
+                // 2. 如果温室面积变化，弹出确认框
+                if (oldArea !== null && newArea !== oldArea && newArea !== null && newArea !== undefined) {
+                    const confirmed = confirm(
+                        `⚠️ 温室面积变更警告\n\n` +
+                        `原面积: ${oldArea} m²\n` +
+                        `新面积: ${newArea} m²\n\n` +
+                        `📊 重要提示：\n` +
+                        `修改温室面积后，该项目下【所有历史记录】的单位产量都将重新计算！\n\n` +
+                        `是否继续？`
+                    );
+
+                    if (!confirmed) {
+                        btn.textContent = '❌ 已取消';
+                        setTimeout(() => {
+                            btn.textContent = originalText;
+                            btn.disabled = false;
+                        }, 2000);
+                        return;
+                    }
+                }
+
+                // 3. 构建 Payload
+                const payload = {
+                    user_id: currentUser.id,
+                    project_name: currentProjectName // Ensure project name is part of Key
+                };
+                let hasData = false;
+
+                if (!collectionData.constants) collectionData.constants = {};
+
+                indicators.forEach(ind => {
+                    if (ind.frequency === 'constant') {
+                        const val = collectionData.constants[ind.field];
+                        if (val !== undefined && val !== null) {
+                            const cnName = translations['zh'].indicators[ind.field];
+                            payload[cnName] = val;
+                            hasData = true;
+                        }
+                    }
+                });
+
+                // Add sample names
+                payload.sample_names = collectionData.sampleNames || [];
+
+                // Since project name is always present (from context), we can save even if only creating entry
+                // But we used hasData check. "Dripper count" etc might be 0.
+                // Assuming we want to save.
+                hasData = true;
+
+                if (!hasData) throw new Error('没有可保存的参数');
+
+                const { error } = await supabase
+                    .from('facility_settings')
+                    .upsert(payload, { onConflict: 'user_id, project_name' });
+
+                if (error) throw error;
+
+                btn.textContent = '✅ 保存成功';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }, 2000);
+
+            } catch (err) {
+                console.error(err);
+                alert('保存失败: ' + err.message);
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // 事件监听
+
+
+        // 初始化应用
+        async function init() {
+            try {
+                console.log('开始初始化...');
+
+                await initAuth();
+                console.log('认证完成');
+
+                initDataStructure();
+                console.log('数据结构初始化完成');
+
+                generateReplicateSelectors();
+
+                console.log('样本选择器生成完成');
+
+                generateInputFields();
+                console.log('输入框生成完成');
+
+                await loadFromDatabase();
+                console.log('数据库数据加载完成');
+
+                loadDataForType('weekly', currentWeeklyRep);
+                loadDataForType('daily', currentDailyRep);
+
+                console.log('初始化完成！');
+
+            } catch (error) {
+                console.error('初始化失败:', error);
+                alert('初始化失败: ' + error.message);
+            }
+        }
+
+        // 启动应用
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+
+</html>

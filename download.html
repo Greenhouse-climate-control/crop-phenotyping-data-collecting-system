@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>📥 数据下载 - 得希表型采集系统</title>
+    <link rel="stylesheet" href="common.css?v=fix1">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js"></script>
+    <style>
+        .download-card {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.92) 100%);
+            border-radius: var(--radius-2xl, 32px);
+            padding: 36px;
+            box-shadow: var(--shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.05), 0 20px 40px rgba(16, 185, 129, 0.1));
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            max-width: 1000px;
+            margin: 0 auto;
+            backdrop-filter: blur(20px);
+        }
+
+        .filter-section {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.02) 100%);
+            border-radius: var(--radius-xl, 24px);
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(16, 185, 129, 0.1);
+        }
+
+        .filter-group {
+            margin-bottom: 20px;
+        }
+
+        .filter-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-label {
+            font-weight: 600;
+            color: #065f46;
+            margin-bottom: 10px;
+            display: block;
+            font-size: 1.1rem;
+        }
+
+        .input-field {
+            padding: 10px 14px;
+            border: 2px solid #34d399;
+            border-radius: 12px;
+            font-size: 1rem;
+            color: #065f46;
+            background: white;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .indicator-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .indicator-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            background: white;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .indicator-item:hover {
+            background: #ecfdf5;
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 20px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: box-shadow 0.3s, transform 0.2s;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-download:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Custom Dropdown Styles */
+        .custom-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-btn {
+            padding: 8px 14px;
+            border: 2px solid #34d399;
+            border-radius: 12px;
+            background: white;
+            color: #065f46;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .dropdown-btn:hover {
+            border-color: #10b981;
+            box-shadow: 0 2px 5px rgba(16, 185, 129, 0.1);
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 110%;
+            right: 0;
+            background-color: white;
+            min-width: 200px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            border: 1px solid rgba(16, 185, 129, 0.1);
+            padding: 8px;
+            z-index: 100;
+        }
+
+        .dropdown-content.show {
+            display: block;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background 0.2s;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+
+        .dropdown-item:hover {
+            background-color: #ecfdf5;
+        }
+
+        .dropdown-item input[type="checkbox"] {
+            accent-color: #10b981;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation Bar -->
+    <nav class="nav-bar">
+        <div class="nav-links">
+            <a href="index.html" class="nav-link" title="首页">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+            </a>
+            <a href="calendar.html" class="nav-link" data-page="calendar" title="采集日历">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+            </a>
+            <a href="collection.html" class="nav-link" data-page="collection" title="数据采集">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                </svg>
+            </a>
+            <a href="trends.html" class="nav-link" data-page="trends" title="统计分析">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+            </a>
+            <a href="download.html" class="nav-link active" data-page="download" title="数据下载">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+            </a>
+        </div>
+        <div class="user-area" id="navUserArea">
+            <button class="lang-switch" id="langSwitch" style="display: none;">🌐 EN</button>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="download-card">
+
+
+            <!-- 1. Project Selection -->
+            <div class="filter-section">
+                <label class="filter-label" data-lang="downloadPage.selectProject">选择项目</label>
+                <select id="projectSelect" class="input-field">
+                    <option value="" disabled selected data-lang="downloadPage.projectPlaceholder">-- 请选择项目 --</option>
+                </select>
+            </div>
+
+            <!-- 2. Date Range -->
+            <div class="filter-section">
+                <label class="filter-label" data-lang="downloadPage.selectDateRange">选择日期范围</label>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <div style="flex: 1;">
+                        <span style="font-size: 0.9rem; color: #666; display: block; margin-bottom: 5px;"
+                            data-lang="downloadPage.startDate">开始日期</span>
+                        <input type="date" id="startDate" class="input-field">
+                    </div>
+                    <div style="flex: 1;">
+                        <span style="font-size: 0.9rem; color: #666; display: block; margin-bottom: 5px;"
+                            data-lang="downloadPage.endDate">结束日期</span>
+                        <input type="date" id="endDate" class="input-field">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Indicators Selection -->
+            <div class="filter-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <label class="filter-label" style="margin: 0;"
+                        data-lang="downloadPage.selectIndicators">选择指标</label>
+
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 0.9rem; color: #666;" data-lang="downloadPage.selectionMode">快速选择</span>
+                        <!-- Custom Dropdown -->
+                        <div class="custom-dropdown" id="quickSelectDropdown">
+                            <button class="dropdown-btn" onclick="toggleDropdown()">
+                                <span id="dropdownLabel" data-lang="downloadPage.allIndicators">全选</span>
+                                <span style="font-size: 0.8rem;">▼</span>
+                            </button>
+                            <div class="dropdown-content" id="dropdownMenu">
+                                <label class="dropdown-item">
+                                    <input type="checkbox" id="cb_all" checked onchange="handleDropdownClick('all')">
+                                    <span data-lang="downloadPage.allIndicators">全选</span>
+                                </label>
+                                <label class="dropdown-item">
+                                    <input type="checkbox" id="cb_weekly" checked
+                                        onchange="handleDropdownClick('weekly')">
+                                    <span data-lang="downloadPage.allWeekly">所有周数据</span>
+                                </label>
+                                <label class="dropdown-item">
+                                    <input type="checkbox" id="cb_daily" checked
+                                        onchange="handleDropdownClick('daily')">
+                                    <span data-lang="downloadPage.allDaily">所有日数据</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="indicatorList">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+
+            <button class="btn-download" onclick="downloadData()" id="downloadBtn" data-lang="downloadPage.downloadBtn">
+                🚀 导出数据
+            </button>
+        </div>
+    </div>
+
+    <script src="common.js?v=auth5"></script>
+    <script>
+        setActiveNav('download');
+
+        let indicators = [];
+
+        async function initPage() {
+            await initAuth();
+            if (!currentUser) {
+                // Not logged in handled by initAuth
+                return;
+            }
+
+            // Load Indicators
+            indicators = getIndicators(); // Helper from common.js
+            renderIndicators();
+
+            // Load Projects
+            loadProjects();
+        }
+
+        function renderIndicators() {
+            const container = document.getElementById('indicatorList');
+            container.innerHTML = '';
+
+            const groups = {
+                weeklyCollected: { items: [] },
+                weeklyCalculated: { items: [] },
+                dailyCollected: { items: [] },
+                dailyCalculated: { items: [] }
+            };
+
+            indicators.forEach(ind => {
+                if (ind.frequency === 'weekly') {
+                    if (ind.isStatistic) groups.weeklyCalculated.items.push(ind);
+                    else groups.weeklyCollected.items.push(ind);
+                } else if (ind.frequency === 'daily' || ind.frequency === 'constant') {
+                    if (ind.isStatistic) groups.dailyCalculated.items.push(ind);
+                    else groups.dailyCollected.items.push(ind);
+                }
+            });
+
+            const lang = translations[currentLang].downloadPage;
+            const order = ['weeklyCollected', 'weeklyCalculated', 'dailyCollected', 'dailyCalculated'];
+
+            order.forEach(key => {
+                const group = groups[key];
+                if (group.items.length === 0) return;
+
+                const header = document.createElement('div');
+                header.style.cssText = 'width: 100%; margin: 20px 0 10px 0; border-bottom: 2px solid #eee; padding-bottom: 5px; display: flex; align-items: center; justify-content: space-between;';
+
+                header.innerHTML = `
+                    <span style="font-weight: 600; color: #065f46; font-size: 1.1rem;">${lang[key]}</span>
+                `;
+                container.appendChild(header);
+
+                const grid = document.createElement('div');
+                grid.className = 'indicator-list';
+                grid.id = `group-${key}`;
+                grid.style.marginTop = '0';
+
+                group.items.forEach(ind => {
+                    const item = document.createElement('label');
+                    item.className = 'indicator-item';
+                    item.innerHTML = `
+                        <input type="checkbox" name="indicator" value="${ind.field}" checked onchange="onCheckboxChange()">
+                        <span>${ind.name} (${ind.unit})</span>
+                    `;
+                    grid.appendChild(item);
+                });
+                container.appendChild(grid);
+            });
+
+            // Init state
+            updateDropdownState();
+            updateDropdownLabel();
+        }
+
+        // Custom Dropdown Logic
+        function toggleDropdown() {
+            document.getElementById('dropdownMenu').classList.toggle('show');
+        }
+
+        // Close dropdown when clicking outside
+        window.onclick = function (event) {
+            if (!event.target.closest('.custom-dropdown')) {
+                const dropdowns = document.getElementsByClassName("dropdown-content");
+                for (let i = 0; i < dropdowns.length; i++) {
+                    const openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) {
+                        openDropdown.classList.remove('show');
+                    }
+                }
+            }
+        }
+
+        function handleDropdownClick(type) {
+            const cbAll = document.getElementById('cb_all');
+            const cbWeekly = document.getElementById('cb_weekly');
+            const cbDaily = document.getElementById('cb_daily');
+
+            // Logic for dropdown state
+            if (type === 'all') {
+                cbWeekly.checked = cbAll.checked;
+                cbDaily.checked = cbAll.checked;
+            } else if (type === 'weekly' || type === 'daily') {
+                if (cbWeekly.checked && cbDaily.checked) cbAll.checked = true;
+                else cbAll.checked = false;
+            }
+
+            // Sync with Indicators
+            const checkboxes = document.querySelectorAll('input[name="indicator"]');
+            checkboxes.forEach(cb => {
+                const field = cb.value;
+                const ind = indicators.find(i => i.field === field);
+                if (!ind) return;
+
+                const isWeekly = ind.frequency === 'weekly';
+                const isDaily = (ind.frequency === 'daily' || ind.frequency === 'constant');
+
+                if (isWeekly) cb.checked = cbWeekly.checked;
+                if (isDaily) cb.checked = cbDaily.checked;
+            });
+
+            updateDropdownLabel();
+        }
+
+        function onCheckboxChange() {
+            updateDropdownState();
+            updateDropdownLabel();
+        }
+
+        function updateGroupHeaders() {
+            // For each group header, check if all children are checked
+            document.querySelectorAll('input[onchange^="toggleGroupIndicators"]').forEach(groupCb => {
+                // Extract groupId from toggleGroupIndicators(this, 'groupId')
+                // Regex or dataset? I used string literal in HTML.
+                // Let's rely on DOM structure? 
+                // The header is previous sibling of the grid? No.
+                // Header is appended, then Grid is appended.
+                // Grid ID is `group-${key}`.
+                // I need to know which key this groupCb belongs to.
+                // I can add data-group attribute to the group checkbox.
+            });
+            // Actually, simplest is just to reset group headers to "indeterminate" or false if not all checked.
+            // But let's skip complex group header sync for now, or just leave them as simple toggles.
+            // User didn't fastidiously request group header sync.
+            // But my Previous `handleQuickSelect` did basic sync.
+        }
+
+        function updateDropdownState() {
+            const checkboxes = Array.from(document.querySelectorAll('input[name="indicator"]'));
+
+            let allWeeklyChecked = true;
+            let allDailyChecked = true;
+            let hasWeekly = false;
+            let hasDaily = false;
+
+            checkboxes.forEach(cb => {
+                const field = cb.value;
+                const ind = indicators.find(i => i.field === field);
+                if (!ind) return;
+
+                if (ind.frequency === 'weekly') {
+                    hasWeekly = true;
+                    if (!cb.checked) allWeeklyChecked = false;
+                } else {
+                    hasDaily = true;
+                    if (!cb.checked) allDailyChecked = false;
+                }
+            });
+
+            const cbAll = document.getElementById('cb_all');
+            const cbWeekly = document.getElementById('cb_weekly');
+            const cbDaily = document.getElementById('cb_daily');
+
+            if (cbWeekly && cbDaily && cbAll) { // Ensure elements exist before trying to set properties
+                if (hasWeekly) cbWeekly.checked = allWeeklyChecked;
+                else cbWeekly.checked = true; // If no weekly items, consider weekly selection as "checked"
+
+                if (hasDaily) cbDaily.checked = allDailyChecked;
+                else cbDaily.checked = true; // If no daily items, consider daily selection as "checked"
+
+                cbAll.checked = (cbWeekly.checked && cbDaily.checked);
+            }
+        }
+
+        function updateDropdownLabel() {
+            const cbAll = document.getElementById('cb_all');
+            const cbWeekly = document.getElementById('cb_weekly');
+            const cbDaily = document.getElementById('cb_daily');
+            const label = document.getElementById('dropdownLabel');
+            if (!label) return;
+
+            const lang = translations[currentLang].downloadPage;
+
+            if (cbAll.checked) {
+                label.textContent = lang.allIndicators || 'Select All';
+            } else if (cbWeekly.checked && !cbDaily.checked) {
+                label.textContent = lang.allWeekly || 'All Weekly';
+            } else if (!cbWeekly.checked && cbDaily.checked) {
+                label.textContent = lang.allDaily || 'All Daily';
+            } else {
+                label.textContent = lang.custom || 'Custom';
+            }
+        }
+
+        async function loadProjects() {
+            if (!currentUser) return;
+
+            // Fetch distinct project names from weekly_phenotypes and daily_phenotypes?
+            // Usually facility_settings has projects list? Or just distinct from data.
+            // Let's use facility_settings to get configured projects.
+            const { data, error } = await supabase
+                .from('facility_settings')
+                .select('project_name')
+                .eq('user_id', currentUser.id);
+
+            if (error) {
+                console.error('Error loading projects:', error);
+                return;
+            }
+
+            // Unique projects
+            const projects = [...new Set(data.map(d => d.project_name))];
+            const select = document.getElementById('projectSelect');
+
+            projects.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p;
+                option.textContent = p;
+                select.appendChild(option);
+            });
+        }
+
+        async function downloadData() {
+            const project = document.getElementById('projectSelect').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const selectedIndicators = Array.from(document.querySelectorAll('input[name="indicator"]:checked')).map(cb => cb.value);
+
+            if (!project) {
+                alert('请选择项目 (Please select a project)');
+                return;
+            }
+            if (!startDate || !endDate) {
+                alert('请选择日期范围 (Please select date range)');
+                return;
+            }
+            if (selectedIndicators.length === 0) {
+                alert('请至少选择一个指标 (Please select at least one indicator)');
+                return;
+            }
+
+            const btn = document.getElementById('downloadBtn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ Processing...';
+
+            try {
+                // Fetch Facility Settings for Header Info
+                let facilityInfo = {};
+                const { data: facilityData, error: facilityError } = await supabase
+                    .from('facility_settings')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .eq('project_name', project)
+                    .single();
+
+                if (facilityData) facilityInfo = facilityData;
+
+                const weeklyFields = [];
+                const dailyFields = [];
+
+                selectedIndicators.forEach(field => {
+                    const ind = indicators.find(i => i.field === field);
+                    if (ind) {
+                        if (ind.frequency === 'daily') dailyFields.push(field);
+                        else if (ind.frequency === 'weekly') weeklyFields.push(field);
+                        // Constant fields are handled in header
+                    }
+                });
+
+                // Helper to get DB column name (Chinese)
+                const getDbCol = (field) => {
+                    const zhIndicators = translations.zh.indicators;
+                    return zhIndicators[field] || field;
+                };
+
+                // Prepare Excel Data
+                // Prepare Excel Data
+                const wb = XLSX.utils.book_new();
+                const wsData = [];
+
+                // Track rows that need styling
+                const headerRowsIndices = []; // Table headers
+                const sectionTitleIndices = []; // Section titles (Project, Facility, Daily/Weekly Title)
+
+                // 1. Header Information
+                wsData.push([`Project: ${project}`]);
+                sectionTitleIndices.push(wsData.length - 1);
+                wsData.push([]);
+
+                // Facility Settings Table
+                wsData.push([`Facility Settings`]);
+                sectionTitleIndices.push(wsData.length - 1);
+
+                const facilityHeaders = ['Dripper Count (滴箭个数)', 'Greenhouse Area (温室面积)', 'Total Dripper Count (总滴箭个数)', 'Preset Sample Names'];
+                headerRowsIndices.push(wsData.length);
+                wsData.push(facilityHeaders);
+
+                const sampleNames = facilityInfo.sample_names || [];
+                const facilityValues = [
+                    facilityInfo['滴箭个数'] || 'N/A',
+                    facilityInfo['温室面积'] || 'N/A',
+                    facilityInfo['总滴箭个数'] || 'N/A',
+                    sampleNames.join(' | ')
+                ];
+                wsData.push(facilityValues);
+                wsData.push([]); // Spacer
+
+                // Style definition for headers and titles
+                const headerStyle = {
+                    font: { bold: true, color: { rgb: "FFFFFF" } },
+                    fill: { fgColor: { rgb: "4F81BD" } }, // Blue background
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: {
+                        top: { style: "thin", color: { rgb: "000000" } },
+                        bottom: { style: "thin", color: { rgb: "000000" } },
+                        left: { style: "thin", color: { rgb: "000000" } },
+                        right: { style: "thin", color: { rgb: "000000" } }
+                    }
+                };
+
+                // Helper to format a timestamp to 'YYYY-MM-DD HH:MM:SS'（北京时间 UTC+8）
+                const formatTimestamp = (ts) => {
+                    if (!ts) return '';
+                    // 强制转换为北京时间（UTC+8），与系统其他地方的 getBeijingTime() 保持一致
+                    const utcMs = new Date(ts).getTime();
+                    const d = new Date(utcMs + 8 * 3600 * 1000); // UTC+8
+                    const pad = n => String(n).padStart(2, '0');
+                    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+                };
+
+                // 2. Fetch Daily Data
+                if (dailyFields.length > 0) {
+                    const dbFields = dailyFields.map(f => `"${getDbCol(f)}"`);
+                    const selectQuery = 'date, created_at, ' + dbFields.join(',');
+
+                    const { data: dailyData, error } = await supabase
+                        .from('daily_phenotypes')
+                        .select(selectQuery)
+                        .eq('user_id', currentUser.id)
+                        .eq('project_name', project)
+                        .gte('date', startDate)
+                        .lte('date', endDate)
+                        .order('date', { ascending: true });
+
+                    if (error) throw error;
+
+                    if (dailyData && dailyData.length > 0) {
+                        wsData.push([`Daily Data (${startDate} to ${endDate})`]);
+                        sectionTitleIndices.push(wsData.length - 1);
+
+                        // Header is next row
+                        headerRowsIndices.push(wsData.length);
+
+                        const headers = ['Date', 'Week', ...dailyFields.map(f => {
+                            const ind = indicators.find(i => i.field === f);
+                            return ind.unit ? `${ind.name} (${ind.unit})` : ind.name;
+                        })];
+                        wsData.push(headers);
+
+                        // Helper for week number
+                        const getWeekNumber = (dateStr) => {
+                            if (!dateStr) return '';
+                            const date = new Date(dateStr);
+                            const onejan = new Date(date.getFullYear(), 0, 1);
+                            const millisAway = date - onejan;
+                            const dayOfYear = Math.floor(millisAway / 86400000) + 1;
+                            return Math.ceil(dayOfYear / 7);
+                        };
+
+                        dailyData.forEach(row => {
+                            const rowData = [
+                                formatTimestamp(row.created_at),
+                                getWeekNumber(row.date),
+                                ...dailyFields.map(f => {
+                                    const colName = getDbCol(f);
+                                    const val = row[colName];
+                                    return (val !== null && val !== undefined) ? val : '';
+                                })
+                            ];
+                            wsData.push(rowData);
+                        });
+                        wsData.push([]); // Spacer
+                    }
+                }
+
+                // 3. Fetch Weekly Data
+                if (weeklyFields.length > 0) {
+                    const startYear = new Date(startDate).getFullYear();
+                    const endYear = new Date(endDate).getFullYear();
+
+                    const dbFields = weeklyFields.map(f => `"${getDbCol(f)}"`);
+                    const selectQuery = 'year, week, sample_name, date, created_at, ' + dbFields.join(',');
+
+                    const { data: weeklyData, error } = await supabase
+                        .from('weekly_phenotypes')
+                        .select(selectQuery)
+                        .eq('user_id', currentUser.id)
+                        .eq('project_name', project)
+                        .gte('year', startYear)
+                        .lte('year', endYear)
+                        .order('year', { ascending: true })
+                        .order('week', { ascending: true });
+
+                    if (error) throw error;
+
+                    if (weeklyData && weeklyData.length > 0) {
+                        // Natural sort: year → week → sample_name letter prefix → sample_name numeric suffix
+                        const parseSampleName = (name) => {
+                            if (!name) return { prefix: '', num: 0 };
+                            const m = name.match(/^([A-Za-z\-]*)(\d+)$/);
+                            return m ? { prefix: m[1], num: parseInt(m[2], 10) } : { prefix: name, num: 0 };
+                        };
+                        weeklyData.sort((a, b) => {
+                            if (a.year !== b.year) return a.year - b.year;
+                            if (a.week !== b.week) return a.week - b.week;
+                            const pa = parseSampleName(a.sample_name);
+                            const pb = parseSampleName(b.sample_name);
+                            if (pa.prefix !== pb.prefix) return pa.prefix.localeCompare(pb.prefix);
+                            return pa.num - pb.num;
+                        });
+
+                        wsData.push([`Weekly Data (${startDate} to ${endDate})`]);
+                        sectionTitleIndices.push(wsData.length - 1);
+
+                        headerRowsIndices.push(wsData.length);
+
+                        const headers = ['Date', 'Week', 'Sample Name', ...weeklyFields.map(f => {
+                            const ind = indicators.find(i => i.field === f);
+                            return ind.unit ? `${ind.name} (${ind.unit})` : ind.name;
+                        })];
+                        wsData.push(headers);
+
+                        weeklyData.forEach(row => {
+                            const rowData = [
+                                formatTimestamp(row.created_at),
+                                row.week,
+                                row.sample_name,
+                                ...weeklyFields.map(f => {
+                                    const colName = getDbCol(f);
+                                    const val = row[colName];
+                                    return (val !== null && val !== undefined) ? val : '';
+                                })
+                            ];
+                            wsData.push(rowData);
+                        });
+                        wsData.push([]);
+                    }
+                }
+
+                if (wsData.length <= 7) {
+                    alert('未找到数据 (No data found)');
+                    return;
+                }
+
+                // Create Worksheet
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+                // Apply Styles to Headers
+                headerRowsIndices.forEach(rowIndex => {
+                    const rowData = wsData[rowIndex];
+                    if (rowData) {
+                        rowData.forEach((_, colIndex) => {
+                            const cellRef = XLSX.utils.encode_cell({ c: colIndex, r: rowIndex });
+                            if (!ws[cellRef]) ws[cellRef] = { v: rowData[colIndex], t: 's' };
+                            if (ws[cellRef]) {
+                                ws[cellRef].s = headerStyle;
+                            }
+                        });
+                    }
+                });
+
+                // Apply Styles to Section Titles
+                sectionTitleIndices.forEach(rowIndex => {
+                    // Section titles usually span multiple columns or just the first one. 
+                    // We will style the first cell and maybe merge? Or just style the cells that have text.
+                    // Usually it is just the first cell wsData[rowIndex][0].
+                    // Let's style the first cell heavily.
+                    const cellRef = XLSX.utils.encode_cell({ c: 0, r: rowIndex });
+                    if (!ws[cellRef]) ws[cellRef] = { v: wsData[rowIndex][0], t: 's' };
+
+                    // Use same header style but maybe left aligned? User said "同時 highlight", so same style.
+                    // Let's center it or keep left if it looks weird. Header style is centered.
+                    // Let's use headerStyle but left alignment might be better for titles? 
+                    // User said "highlight", usually implies background color.
+                    // I'll stick to headerStyle (Centered) for now as requested "Same highlight".
+                    if (ws[cellRef]) {
+                        ws[cellRef].s = {
+                            ...headerStyle,
+                            alignment: { horizontal: "left", vertical: "center" } // Override alignment for titles
+                        };
+                    }
+                    // Should we extend background to the whole row? No, just the cell with text is standard for simple exports.
+                });
+
+                // Adjust column widths
+                const colWidths = [];
+                wsData.forEach(row => {
+                    row.forEach((cell, i) => {
+                        const len = (cell ? cell.toString().length : 0);
+                        colWidths[i] = Math.max(colWidths[i] || 0, len);
+                    });
+                });
+                ws['!cols'] = colWidths.map(w => ({ wch: w + 2 }));
+
+                XLSX.utils.book_append_sheet(wb, ws, "Data");
+                XLSX.writeFile(wb, `${project}_data_${startDate}_${endDate}.xlsx`);
+
+            } catch (err) {
+                console.error(err);
+                alert('Download failed: ' + err.message);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initPage);
+    </script>
+</body>
+
+</html>

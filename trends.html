@@ -1,0 +1,1671 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>📈 统计分析 - 得希表型采集系统</title>
+    <link rel="stylesheet" href="common.css?v=fix1">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .trends-card {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.92) 100%);
+            border-radius: var(--radius-2xl, 32px);
+            padding: 36px;
+            box-shadow: var(--shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.05), 0 20px 40px rgba(16, 185, 129, 0.1));
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            max-width: 1200px;
+            margin: 0 auto;
+            backdrop-filter: blur(20px);
+        }
+
+        .chart-controls {
+            margin-bottom: 24px;
+            padding: 20px;
+            background: linear-gradient(145deg, rgba(16, 185, 129, 0.06), rgba(16, 185, 129, 0.02));
+            border-radius: var(--radius-xl, 24px);
+            border: 1px solid rgba(16, 185, 129, 0.1);
+        }
+
+        .chart-controls-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .chart-controls-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .chart-controls-row.time-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .chart-controls-row.time-controls>div {
+            flex: 2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chart-controls-row button {
+            background: linear-gradient(135deg, var(--color-primary-500, #10b981), var(--color-primary-600, #059669));
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: var(--radius-lg, 16px);
+            cursor: pointer;
+            font-size: 0.875rem;
+            /* 14px */
+            font-weight: 600;
+            transition: var(--transition-normal, 250ms cubic-bezier(0.4, 0, 0.2, 1));
+            box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(16, 185, 129, 0.08));
+        }
+
+        .chart-controls-row button:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: var(--shadow-md, 0 4px 6px rgba(0, 0, 0, 0.04), 0 10px 15px rgba(16, 185, 129, 0.15));
+        }
+
+        .chart-controls-row span {
+            font-size: 0.9375rem;
+            /* 15px */
+            font-weight: 700;
+            color: var(--color-primary-800, #065f46);
+            min-width: 120px;
+            text-align: center;
+            background: linear-gradient(135deg, var(--color-primary-700, #047857), var(--color-primary-500, #10b981));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .indicator-checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 18px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(16, 185, 129, 0.15);
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.6));
+            padding: 10px 16px;
+            border-radius: var(--radius-lg, 16px);
+            border: 1px solid rgba(16, 185, 129, 0.12);
+            cursor: pointer;
+            transition: var(--transition-normal, 250ms cubic-bezier(0.4, 0, 0.2, 1));
+        }
+
+        .checkbox-item:hover {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: var(--color-primary-400, #34d399);
+            transform: translateY(-1px);
+        }
+
+        .checkbox-item input {
+            margin-right: 10px;
+            accent-color: var(--color-primary-500, #10b981);
+            width: 18px;
+            height: 18px;
+        }
+
+        .checkbox-item span {
+            font-size: 0.9rem;
+            color: var(--color-primary-900, #064e3b);
+            font-weight: 500;
+        }
+
+        .charts-container {
+            padding: 12px;
+            min-height: 400px;
+            position: relative;
+        }
+
+        .chart-wrapper {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+            border-radius: var(--radius-xl, 24px);
+            padding: 24px;
+            margin-bottom: 28px;
+            box-shadow: var(--shadow-md, 0 4px 6px rgba(0, 0, 0, 0.04), 0 10px 15px rgba(16, 185, 129, 0.08));
+            border: 1px solid rgba(16, 185, 129, 0.1);
+            position: relative;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chart-wrapper h3 {
+            margin: 0 0 18px 0;
+            color: var(--color-neutral-800, #262626);
+            font-size: 1.15rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+        }
+
+        .chart-wrapper h3::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 20px;
+            background: var(--bg-gradient-button, linear-gradient(135deg, #10b981, #059669));
+            border-radius: var(--radius-sm, 8px);
+            margin-right: 12px;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.92);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-xl, 24px);
+            z-index: 10;
+            backdrop-filter: blur(8px);
+        }
+
+        .loading-text {
+            font-size: 1rem;
+            /* 16px */
+            font-weight: 600;
+            color: var(--color-primary-600, #065f46);
+        }
+
+        .no-data-message {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--color-neutral-500, #737373);
+            font-size: 0.9375rem;
+            /* 15px */
+        }
+
+        @media (max-width: 768px) {
+
+            .chart-controls-row,
+            .chart-controls-row.time-controls {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+
+            .chart-controls-row.time-controls>div {
+                flex-direction: row;
+                /* Keep year buttons side-by-side */
+                justify-content: center;
+                width: 100%;
+            }
+
+            .trends-card {
+                padding: 20px;
+                border-radius: 20px;
+            }
+
+            .chart-wrapper {
+                padding: 16px;
+                border-radius: 16px;
+            }
+
+            .chart-controls {
+                padding: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .trends-card {
+                padding: 12px;
+                border-radius: 16px;
+                margin: 0 -5px;
+                /* Pull out slightly to use more width */
+            }
+
+            .chart-wrapper {
+                padding: 12px;
+                margin-bottom: 20px;
+            }
+
+            .chart-controls-row button {
+                width: 100%;
+                padding: 10px;
+            }
+
+            .indicator-checkbox-group {
+                gap: 8px;
+            }
+
+            .checkbox-item {
+                padding: 8px 12px;
+                font-size: 0.85rem;
+                flex: 1 1 auto;
+                /* Allow growth but ensure fit */
+                justify-content: center;
+            }
+
+            .chart-controls-row span {
+                min-width: auto;
+                display: block;
+                margin-bottom: 5px;
+            }
+
+            /* Chart height adjustments */
+            #chartsContainer>div [id$="-chartContainer"] {
+                height: 250px !important;
+                /* Force shorter charts on mobile */
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation Bar -->
+    <nav class="nav-bar">
+        <div class="nav-links">
+            <a href="index.html" class="nav-link" title="首页">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+            </a>
+            <a href="calendar.html" class="nav-link" data-page="calendar" title="采集日历">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+            </a>
+            <a href="collection.html" class="nav-link" data-page="collection" title="数据采集">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                </svg>
+            </a>
+            <a href="trends.html" class="nav-link" data-page="trends" title="统计分析">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+            </a>
+            <a href="download.html" class="nav-link" data-page="download" title="数据下载">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+            </a>
+        </div>
+        <div class="user-area" id="navUserArea" style="display: flex; gap: 10px; align-items: center;">
+            <button class="lang-switch" id="langSwitch" style="display: none;">🌐 EN</button>
+            <!-- Auth button will be injected here by common.js -->
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Charts Container - each card is independent -->
+        <div id="chartsContainer"
+            style="display: flex; flex-direction: column; gap: 25px; width: 100%; max-width: 1000px; min-height: 450px;">
+            <!-- Dynamic chart cards go here -->
+        </div>
+
+        <!-- Add Chart Button - outside the cards -->
+        <div style="text-align: center; margin-top: 30px;">
+            <button id="addChartBtn" onclick="addNewChartCard()" style="background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(16,185,129,0.05));
+                border: 2px dashed #10b981; color: #059669; padding: 18px 45px; 
+                border-radius: 20px; font-size: 1rem; font-weight: 600; cursor: pointer;
+                transition: all 0.3s ease;" data-lang="trendsPage.addChartBtn">
+                ➕ 添加图表
+            </button>
+        </div>
+    </div>
+
+    <script src="common.js?v=fix1"></script>
+    <script>
+        // Set active navigation
+        setActiveNav('trends');
+
+        // Add translations
+        translations.zh.prevYear = '去年';
+        translations.zh.nextYear = '明年';
+        translations.zh.weekAxis = '周次';
+        translations.zh.selectIndicator = '请选择指标';
+        translations.zh.loading = '加载中...';
+
+        translations.en.prevYear = 'Prev Year';
+        translations.en.nextYear = 'Next Year';
+        translations.en.weekAxis = 'Week';
+        translations.en.selectIndicator = 'Select Indicator';
+        translations.en.loading = 'Loading...';
+
+        // Set Chart.js global defaults - normal font style
+        Chart.defaults.font.style = 'normal';
+        Chart.defaults.font.family = "'Inter', 'Helvetica Neue', sans-serif";
+
+        let indicators = getIndicators();
+        const chartsContainer = document.getElementById('chartsContainer');
+
+        // Available projects (loaded from DB)
+        let availableProjects = [];
+
+        // Chart card counter
+        let chartCardCounter = 0;
+
+        // Store chart instances: cardId -> { chart, project, year, field }
+        let chartCards = new Map();
+
+        // Load available projects
+        async function loadProjects() {
+            if (!currentUser || currentUser.is_guest) return;
+
+            try {
+                const { data, error } = await supabase
+                    .from('facility_settings')
+                    .select('project_name')
+                    .eq('user_id', currentUser.id);
+
+                if (error) throw error;
+
+                availableProjects = data ? data.map(d => d.project_name) : [];
+            } catch (err) {
+                console.error('加载项目列表失败:', err);
+            }
+        }
+
+        // Generate indicator dropdown options with category separators
+        function getIndicatorOptionsHTML() {
+            // Refresh indicators from common.js config to ensure latest state
+            indicators = getIndicators();
+            const t = translations[currentLang].trendsPage;
+
+            const weeklyIndicators = indicators.filter(ind => ind.frequency === 'weekly' && !ind.isStatistic);
+            const weeklyStats = indicators.filter(ind => ind.frequency === 'weekly' && ind.isStatistic);
+            const dailyIndicators = indicators.filter(ind => ind.frequency === 'daily' && !ind.isStatistic);
+            const dailyStats = indicators.filter(ind => ind.frequency === 'daily' && ind.isStatistic);
+
+            let html = `<option value="">${t.selectIndicatorPlaceholder}</option>`;
+
+            // Weekly collected
+            if (weeklyIndicators.length) {
+                html += `<optgroup label="${t.weeklyCollectedGroup}" style="color: #10b981;">`;
+                weeklyIndicators.forEach(ind => {
+                    html += `<option value="${ind.field}" style="color: #10b981;">  ${ind.name} (${ind.unit})</option>`;
+                });
+                html += '</optgroup>';
+            }
+
+            // Weekly calculated
+            if (weeklyStats.length) {
+                html += `<optgroup label="${t.weeklyCalculatedGroup}" style="color: #059669;">`;
+                weeklyStats.forEach(ind => {
+                    html += `<option value="${ind.field}" style="color: #059669;">  ${ind.name} (${ind.unit})</option>`;
+                });
+                html += '</optgroup>';
+            }
+
+            // Daily collected
+            if (dailyIndicators.length) {
+                html += `<optgroup label="${t.dailyCollectedGroup}" style="color: #8B5CF6;">`;
+                dailyIndicators.forEach(ind => {
+                    html += `<option value="${ind.field}" style="color: #8B5CF6;">  ${ind.name} (${ind.unit})</option>`;
+                });
+                html += '</optgroup>';
+            }
+
+            // Daily calculated
+            if (dailyStats.length) {
+                html += `<optgroup label="${t.dailyCalculatedGroup}" style="color: #7C3AED;">`;
+                dailyStats.forEach(ind => {
+                    html += `<option value="${ind.field}" style="color: #7C3AED;">  ${ind.name} (${ind.unit})</option>`;
+                });
+                html += '</optgroup>';
+            }
+
+            return html;
+        }
+
+        // Generate project dropdown options
+        function getProjectOptionsHTML(selectedProject) {
+            return availableProjects.map(p =>
+                `<option value="${p}" ${p === selectedProject ? 'selected' : ''}>${p}</option>`
+            ).join('');
+        }
+
+        // Load available samples for current project
+        let availableSamples = [];
+        async function loadAvailableSamples(projectName) {
+            if (!currentUser || currentUser.is_guest) return;
+
+            try {
+                const { data, error } = await supabase
+                    .from('facility_settings')
+                    .select('sample_names')
+                    .eq('user_id', currentUser.id)
+                    .eq('project_name', projectName)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') throw error;
+
+                availableSamples = (data && data.sample_names) ? data.sample_names : [];
+            } catch (err) {
+                console.error('加载样本列表失败:', err);
+                availableSamples = [];
+            }
+        }
+
+        // Generate sample dropdown options
+        function getSampleOptionsHTML() {
+            let html = `<option value="__ALL__">${translations[currentLang].trendsPage.allSamples}</option>`;
+            availableSamples.forEach(name => {
+                html += `<option value="${name}">${name}</option>`;
+            });
+            return html;
+        }
+
+        // Add new chart card
+        function addNewChartCard() {
+            chartCardCounter++;
+            const t = translations[currentLang].trendsPage;
+            const cardId = `chart-card-${chartCardCounter}`;
+            const currentYear = getBeijingTime().getFullYear();
+
+            // 默认选择当前工作项目或第一个可用项目
+            const lastProject = localStorage.getItem('currentProject');
+            const defaultProject = (availableProjects.includes(lastProject)) ? lastProject : (availableProjects[0] || '');
+
+            const cardHTML = `
+                <div class="chart-card" id="${cardId}" style="background: white; border-radius: 20px; 
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid rgba(16,185,129,0.1);
+                    position: relative; padding: 40px 25px 25px 25px; margin-bottom: 25px;">
+                    
+                    <!-- Move Up button -->
+                    <button onclick="moveCardUp('${cardId}')" 
+                        style="position: absolute; top: 8px; right: 80px; z-index: 10;
+                        background: transparent; border: none; color: #9ca3af; 
+                        width: 28px; height: 28px; border-radius: 50%; cursor: pointer; 
+                        display: flex; align-items: center; justify-content: center; 
+                        transition: all 0.2s;"
+                        onmouseover="this.style.background='#dbeafe'; this.style.color='#2563eb'; this.style.transform='scale(1.1)';" 
+                        onmouseout="this.style.background='transparent'; this.style.color='#9ca3af'; this.style.transform='scale(1)';"
+                        title="上移">
+                        ▲
+                    </button>
+
+                    <!-- Move Down button -->
+                    <button onclick="moveCardDown('${cardId}')" 
+                        style="position: absolute; top: 8px; right: 44px; z-index: 10;
+                        background: transparent; border: none; color: #9ca3af; 
+                        width: 28px; height: 28px; border-radius: 50%; cursor: pointer; 
+                        display: flex; align-items: center; justify-content: center; 
+                        transition: all 0.2s;"
+                        onmouseover="this.style.background='#dbeafe'; this.style.color='#2563eb'; this.style.transform='scale(1.1)';" 
+                        onmouseout="this.style.background='transparent'; this.style.color='#9ca3af'; this.style.transform='scale(1)';"
+                        title="下移">
+                        ▼
+                    </button>
+                    
+                    <!-- Delete button -->
+                    <button onclick="removeChartCard('${cardId}')" 
+                        style="position: absolute; top: 8px; right: 8px; z-index: 10;
+                        background: transparent; border: none; color: #9ca3af; 
+                        width: 28px; height: 28px; border-radius: 50%; cursor: pointer; 
+                        display: flex; align-items: center; justify-content: center; 
+                        transition: all 0.2s;"
+                        onmouseover="this.style.background='#fee2e2'; this.style.color='#dc2626'; this.style.transform='scale(1.1)';" 
+                        onmouseout="this.style.background='transparent'; this.style.color='#9ca3af'; this.style.transform='scale(1)';"
+                        title="移除图表">
+                        ✕
+                    </button>
+
+                    <!-- Controls Row -->
+                    <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; margin-bottom: 20px; padding-right: 30px;">
+                        <!-- Project Selector -->
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="color: #065f46; font-weight: 500;">🌿</span>
+                            <select id="${cardId}-project" onchange="updateChartCard('${cardId}')"
+                                style="padding: 8px 12px; border-radius: 12px; border: 1px solid #d1d5db; 
+                                background: white; min-width: 120px; font-size: 0.9rem;">
+                                ${getProjectOptionsHTML(defaultProject)}
+                            </select>
+                        </div>
+                        
+                        <!-- Year Controls -->
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button onclick="changeCardYear('${cardId}', -1)"
+                                style="background: linear-gradient(135deg, #10b981, #059669); color: white; 
+                                border: none; padding: 6px 12px; border-radius: 12px; cursor: pointer; font-size: 0.85rem;">
+                                ◀ ${currentYear - 1}
+                            </button>
+                            <span id="${cardId}-year" style="font-weight: 700; color: #065f46; min-width: 60px; text-align: center;">
+                                ${currentYear}${t.yearSuffix}
+                            </span>
+                            <button onclick="changeCardYear('${cardId}', 1)"
+                                style="background: linear-gradient(135deg, #10b981, #059669); color: white; 
+                                border: none; padding: 6px 12px; border-radius: 12px; cursor: pointer; font-size: 0.85rem;">
+                                ${currentYear + 1} ▶
+                            </button>
+                        </div>
+                        
+                        <!-- Sample Selector (NEW) -->
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="color: #065f46; font-weight: 500;">🧪</span>
+                            <select id="${cardId}-sample" onchange="updateChartCard('${cardId}')"
+                                style="padding: 8px 12px; border-radius: 12px; border: 1px solid #d1d5db; 
+                                background: white; min-width: 140px; font-size: 0.9rem;">
+                                <option value="__ALL__">${t.allSamples}</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Indicator Selector -->
+                        <div style="flex: 1; min-width: 200px;">
+                            <select id="${cardId}-indicator" onchange="updateChartCard('${cardId}')"
+                                style="width: 100%; padding: 10px 15px; border-radius: 12px; border: 2px solid #10b981; 
+                                background: white; font-size: 0.95rem; font-weight: 500; color: #065f46;">
+                                ${getIndicatorOptionsHTML()}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Chart Canvas Container -->
+                    <div id="${cardId}-chartContainer" style="height: 300px; position: relative;">
+                        <div style="display: flex; align-items: center; justify-content: center; height: 100%; 
+                            color: #9ca3af; font-size: 0.95rem;">
+                            ${t.selectIndicator}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            chartsContainer.insertAdjacentHTML('beforeend', cardHTML);
+
+            // Initialize empty chart with grid
+            const container = document.getElementById(`${cardId}-chartContainer`);
+            if (container) {
+                container.innerHTML = '<canvas></canvas>';
+                const ctx = container.querySelector('canvas').getContext('2d');
+
+                const emptyChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: Array.from({ length: 53 }, (_, i) => i + 1),
+                        datasets: []
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                display: true,
+                                grid: { display: true, color: 'rgba(0,0,0,0.05)' },
+                                title: { display: true, text: '周次' },
+                                min: 1,
+                                max: 53,
+                                ticks: {
+                                    stepSize: 2,
+                                    maxRotation: 0,
+                                    minRotation: 0,
+                                    callback: function (value) {
+                                        return value % 2 === 1 ? value : '';
+                                    }
+                                }
+                            },
+                            y: {
+                                display: true,
+                                grid: { display: true, color: 'rgba(0,0,0,0.05)' },
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+
+                // Store card info
+                chartCards.set(cardId, {
+                    chart: emptyChart,
+                    project: defaultProject,
+                    year: currentYear,
+                    field: null,
+                    sample: '__ALL__'
+                });
+            } else {
+                // Fallback
+                chartCards.set(cardId, {
+                    chart: null,
+                    project: defaultProject,
+                    year: currentYear,
+                    field: null,
+                    sample: '__ALL__'
+                });
+            }
+
+            // Load samples for the default project and populate selector
+            loadAvailableSamples(defaultProject).then(() => {
+                const sampleSelector = document.getElementById(`${cardId}-sample`);
+                if (sampleSelector) {
+                    sampleSelector.innerHTML = getSampleOptionsHTML();
+                }
+            });
+        }
+
+        // Remove chart card
+        function removeChartCard(cardId) {
+            const cardInfo = chartCards.get(cardId);
+            if (cardInfo && cardInfo.chart) {
+                cardInfo.chart.destroy();
+            }
+            chartCards.delete(cardId);
+
+            const cardEl = document.getElementById(cardId);
+            if (cardEl) cardEl.remove();
+        }
+
+        // Move card up
+        function moveCardUp(cardId) {
+            const cardEl = document.getElementById(cardId);
+            if (!cardEl) return;
+
+            const previousSibling = cardEl.previousElementSibling;
+            if (previousSibling) {
+                chartsContainer.insertBefore(cardEl, previousSibling);
+            }
+        }
+
+        // Move card down
+        function moveCardDown(cardId) {
+            const cardEl = document.getElementById(cardId);
+            if (!cardEl) return;
+
+            const nextSibling = cardEl.nextElementSibling;
+            if (nextSibling) {
+                chartsContainer.insertBefore(nextSibling, cardEl);
+            }
+        }
+
+        // Change card year
+        async function changeCardYear(cardId, delta) {
+            const cardInfo = chartCards.get(cardId);
+            if (!cardInfo) return;
+
+            cardInfo.year += delta;
+
+            // Update year display
+            const yearDisplay = document.getElementById(`${cardId}-year`);
+            if (yearDisplay) yearDisplay.textContent = `${cardInfo.year}${translations[currentLang].trendsPage.yearSuffix}`;
+
+            // Update button labels
+            const card = document.getElementById(cardId);
+            if (card) {
+                const buttons = card.querySelectorAll('button');
+                buttons.forEach(btn => {
+                    if (btn.textContent.includes('◀')) {
+                        btn.textContent = `◀ ${cardInfo.year - 1}`;
+                    } else if (btn.textContent.includes('▶')) {
+                        btn.textContent = `${cardInfo.year + 1} ▶`;
+                    }
+                });
+            }
+
+            // Refresh chart
+            await updateChartCard(cardId);
+        }
+
+        // Update chart card (when project, year, or indicator changes)
+        async function updateChartCard(cardId) {
+            const cardInfo = chartCards.get(cardId);
+            if (!cardInfo) return;
+
+            // Get current selections
+            const projectEl = document.getElementById(`${cardId}-project`);
+            const sampleEl = document.getElementById(`${cardId}-sample`);
+            const indicatorEl = document.getElementById(`${cardId}-indicator`);
+
+            const previousProject = cardInfo.project;
+            cardInfo.project = projectEl ? projectEl.value : (availableProjects[0] || '');
+            cardInfo.sample = sampleEl ? sampleEl.value : '__ALL__';
+            cardInfo.field = indicatorEl ? indicatorEl.value : '';
+
+            // If project changed, reload samples and update selector
+            if (previousProject !== cardInfo.project) {
+                await loadAvailableSamples(cardInfo.project);
+                if (sampleEl) {
+                    sampleEl.innerHTML = getSampleOptionsHTML();
+                    cardInfo.sample = '__ALL__'; // Reset to all samples
+                }
+            }
+
+            if (!cardInfo.field) {
+                // No indicator selected - clear data but keep grid
+                if (cardInfo.chart) {
+                    cardInfo.chart.data.datasets = [];
+                    cardInfo.chart.update();
+                }
+                return;
+            }
+
+            // Render chart
+            await renderCardChart(cardId);
+        }
+
+        // Fetch Data for the whole year
+        // 从三个表获取数据：weekly_phenotypes, daily_phenotypes 和 weekly_statistics
+        async function fetchYearData() {
+            if (!currentUser || currentUser.is_guest) return;
+
+            showLoading(true);
+
+            try {
+                // 1. 获取周采集数据
+                const { data: weeklyData, error: weeklyError } = await supabase
+                    .from('weekly_phenotypes')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .eq('project_name', currentProjectName) // Filter by project
+                    .eq('year', currentChartYear)
+                    .order('week', { ascending: true });
+
+                if (weeklyError) throw weeklyError;
+
+                // 2. 获取日采集数据
+                const { data: dailyData, error: dailyError } = await supabase
+                    .from('daily_phenotypes')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .eq('project_name', currentProjectName) // Filter by project
+                    .eq('year', currentChartYear)
+                    .order('week', { ascending: true });
+
+                if (dailyError) throw dailyError;
+
+                // 3. 获取统计数据（每周汇总数据）
+                const { data: statisticsData, error: statisticsError } = await supabase
+                    .from('weekly_statistics')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .eq('project_name', currentProjectName)
+                    .eq('year', currentChartYear)
+                    .order('week', { ascending: true });
+
+                if (statisticsError) {
+                    console.warn('No statistics data found:', statisticsError);
+                }
+
+                // Cache data
+                yearDataCache = {
+                    weekly: weeklyData || [],
+                    daily: dailyData || [],
+                    statistics: statisticsData || []
+                };
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                yearDataCache = { weekly: [], daily: [], statistics: [] };
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Process data for a specific field (with optional sample filter)
+        // 根据指标类型从不同的表读取数据
+        function processDataForField(field, sampleName = '__ALL__') {
+            // 查找指标配置
+            const indicator = indicators.find(ind => ind.field === field);
+            if (!indicator) return { labels: [], values: [] };
+
+            // 判断是否为统计指标
+            const isStatistic = indicator.isStatistic || indicator.isConstant;
+            const frequency = indicator.frequency || 'weekly';
+
+            const labels = [];
+            const values = [];
+
+            // Helper to prepare chart data from weekly aggregated values
+            const prepareChartData = (weekValues) => {
+                const ls = [];
+                const vs = [];
+                for (let w = 1; w <= 53; w++) {
+                    ls.push(w);
+                    vs.push(weekValues[w]);
+                }
+                return { labels: ls, values: vs, upper: null, lower: null };
+            };
+
+            // Helper with std bounds
+            const prepareChartDataWithStd = (weekMean, weekStd) => {
+                const ls = [];
+                const vs = [];
+                const upper = [];
+                const lower = [];
+                for (let w = 1; w <= 53; w++) {
+                    ls.push(w);
+                    vs.push(weekMean[w]);
+                    if (weekMean[w] !== null && weekStd[w] !== null) {
+                        upper.push(weekMean[w] + weekStd[w]);
+                        lower.push(weekMean[w] - weekStd[w]);
+                    } else {
+                        upper.push(null);
+                        lower.push(null);
+                    }
+                }
+                return { labels: ls, values: vs, upper, lower };
+            };
+
+            if (isStatistic) {
+                // 统计指标：直接从 weekly_statistics 读取
+                const weekValues = new Array(54).fill(null);
+                if (yearDataCache.statistics) {
+                    yearDataCache.statistics.forEach(row => {
+                        const week = row.week;
+                        let val = row[field];
+                        if (val !== undefined && val !== null && week >= 1 && week <= 53) {
+                            val = parseFloat(val);
+                            if (!isNaN(val)) weekValues[week] = val;
+                        }
+                    });
+                }
+                return prepareChartData(weekValues);
+
+            } else if (frequency === 'weekly') {
+                // 周采集指标：从 weekly_phenotypes 计算每周平均值和标准差
+                const weekData = new Array(54).fill(null).map(() => ({ values: [] }));
+                if (yearDataCache.weekly) {
+                    yearDataCache.weekly.forEach(row => {
+                        // Sample filter: if specific sample selected, only include its data
+                        if (sampleName !== '__ALL__' && row.sample_name !== sampleName) {
+                            return; // Skip this row
+                        }
+
+                        const week = row.week;
+                        let val = row[field];
+                        // 尝试从中文列名读取
+                        if (val === undefined || val === null) {
+                            const cnName = translations['zh'].indicators[field];
+                            if (cnName) val = row[cnName];
+                        }
+                        if (val !== undefined && val !== null) {
+                            val = parseFloat(val);
+                            if (!isNaN(val) && week >= 1 && week <= 53) {
+                                weekData[week].values.push(val);
+                            }
+                        }
+                    });
+                }
+
+                // Calculate mean and std
+                const weekMean = new Array(54).fill(null);
+                const weekStd = new Array(54).fill(null);
+                for (let w = 1; w <= 53; w++) {
+                    const vals = weekData[w].values;
+                    if (vals.length > 0) {
+                        const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+                        weekMean[w] = mean;
+                        if (vals.length > 1) {
+                            const variance = vals.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / (vals.length - 1);
+                            weekStd[w] = Math.sqrt(variance);
+                        } else {
+                            weekStd[w] = 0;
+                        }
+                    }
+                }
+                return prepareChartDataWithStd(weekMean, weekStd);
+
+            } else if (frequency === 'daily') {
+                // 日采集指标：从 daily_phenotypes 计算每周平均值
+                // 注意：这里是所有天的平均值，还是需要先算每天的平均再算每周？
+                // 简单起见，计算该周所有 daily 记录的平均值 (Average of all daily records in that week)
+                // This averages across days AND replicates simultaneously.
+                // E.g. Irrigation EC: Average of (Day1Rep1, Day1Rep2... Day2Rep1...)
+
+                const weekData = new Array(54).fill(null).map(() => ({ count: 0, sum: 0 }));
+                if (yearDataCache.daily) {
+                    yearDataCache.daily.forEach(row => {
+                        // Sample filter: if specific sample selected, only include its data
+                        if (sampleName !== '__ALL__' && row.sample_name !== sampleName) {
+                            return; // Skip this row
+                        }
+
+                        const week = row.week; // We added 'week' column to daily_phenotypes
+                        let val = row[field];
+                        if (val !== undefined && val !== null) {
+                            val = parseFloat(val);
+                            if (!isNaN(val) && week >= 1 && week <= 53) {
+                                weekData[week].sum += val;
+                                weekData[week].count++;
+                            }
+                        }
+                    });
+                }
+
+                // Calculate averages
+                const weekValues = new Array(54).fill(null);
+                for (let w = 1; w <= 53; w++) {
+                    // For Accumulated/Sum fields like Yield, we might want Average Daily Yield per Replicate?
+                    // But here we are just showing "Trend of Daily Yield".
+                    // "Daily Yield" unit is "kg/day". Showing the average daily yield over the week makes sense.
+                    if (weekData[w].count > 0) {
+                        weekValues[w] = weekData[w].sum / weekData[w].count;
+                    }
+                }
+                return prepareChartData(weekValues);
+            }
+
+            return { labels, values };
+        }
+
+        // Toggle Indicator
+        function toggleIndicator(field, isChecked) {
+            if (isChecked) {
+                addChart(field);
+            } else {
+                removeChart(field);
+            }
+
+            // Toggle no data message
+            if (activeCharts.size === 0) {
+                noDataMessage.style.display = 'block';
+            } else {
+                noDataMessage.style.display = 'none';
+            }
+        }
+
+        // Add Chart with its own year controls
+        async function addChart(field, year = null) {
+            if (activeCharts.has(field)) return;
+
+            const indicator = indicators.find(ind => ind.field === field);
+            const chartYear = year || getBeijingTime().getFullYear();
+
+            // Create DOM elements
+            const wrapper = document.createElement('div');
+            wrapper.className = 'chart-wrapper';
+            wrapper.id = `chart - wrapper - ${field} `;
+
+            // Year controls for this chart
+            const yearControls = document.createElement('div');
+            yearControls.style.cssText = 'display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 15px;';
+            yearControls.innerHTML = `
+                < button type = "button" class="chart-year-btn" data - field="${field}" data - dir="-1"
+            style = "background: linear-gradient(135deg, #10b981, #059669); color: white; 
+            border: none; padding: 6px 12px; border - radius: 15px; cursor: pointer; font - size: 13px; ">
+                    ◀ ${chartYear - 1}
+                </button >
+                <span style="font-weight: 700; color: #065f46; min-width: 80px; text-align: center;" 
+                    id="year-display-${field}">${chartYear}年</span>
+                <button type="button" class="chart-year-btn" data-field="${field}" data-dir="1"
+                    style="background: linear-gradient(135deg, #10b981, #059669); color: white; 
+                    border: none; padding: 6px 12px; border-radius: 15px; cursor: pointer; font-size: 13px;">
+                    ${chartYear + 1} ▶
+                </button>
+            `;
+
+            const title = document.createElement('h3');
+            title.textContent = `${indicator.name} (${indicator.unit})`;
+
+            const canvasContainer = document.createElement('div');
+            canvasContainer.style.height = '300px';
+            canvasContainer.style.position = 'relative';
+
+            const canvas = document.createElement('canvas');
+
+            canvasContainer.appendChild(canvas);
+            wrapper.appendChild(yearControls);
+            wrapper.appendChild(title);
+            wrapper.appendChild(canvasContainer);
+            chartsContainer.appendChild(wrapper);
+
+            // Attach year button event listeners
+            yearControls.querySelectorAll('.chart-year-btn').forEach(btn => {
+                btn.addEventListener('click', async function () {
+                    const f = this.dataset.field;
+                    const dir = parseInt(this.dataset.dir);
+                    const chartInfo = activeCharts.get(f);
+                    if (!chartInfo) return;
+
+                    chartInfo.year += dir;
+                    await updateSingleChart(f);
+                });
+            });
+
+            // Fetch data for this specific year
+            const { labels, values, upper, lower, isDaily } = await fetchAndProcessForChart(field, chartYear);
+
+            // Build datasets
+            const datasets = [];
+
+            // If we have std bounds, add upper/lower fill area
+            if (upper && lower) {
+                datasets.push({
+                    label: '上界 (+σ)',
+                    data: upper,
+                    borderColor: 'transparent',
+                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                    borderWidth: 0,
+                    fill: '+1',
+                    pointRadius: 0,
+                    tension: 0.3,
+                    spanGaps: true
+                });
+            }
+
+            // Main mean line
+            datasets.push({
+                label: indicator.name,
+                data: values,
+                borderColor: isDaily ? '#8B5CF6' : '#10b981', // Purple for daily, green for weekly
+                backgroundColor: isDaily ? 'rgba(139, 92, 246, 0.05)' : 'rgba(16, 185, 129, 0.05)',
+                borderWidth: 2.5,
+                tension: 0.3,
+                fill: false,
+                pointRadius: isDaily ? 3 : 4,
+                pointBackgroundColor: isDaily ? '#8B5CF6' : '#10b981',
+                pointBorderColor: 'white',
+                pointBorderWidth: 2,
+                spanGaps: true
+            });
+
+            if (upper && lower) {
+                datasets.push({
+                    label: '下界 (-σ)',
+                    data: lower,
+                    borderColor: 'transparent',
+                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                    borderWidth: 0,
+                    fill: '-1',
+                    pointRadius: 0,
+                    tension: 0.3,
+                    spanGaps: true
+                });
+            }
+
+            // Configure x-axis based on daily vs weekly
+            // Configure x-axis based on daily vs weekly
+            const tPage = translations[currentLang].trendsPage || {};
+            const dateAxisTitle = tPage.dateAxis || 'Date';
+            const weekAxisTitle = tPage.weekAxis || 'Week';
+
+            const xAxisConfig = isDaily ? {
+                display: true,
+                type: 'linear',
+                title: { display: true, text: dateAxisTitle },
+                grid: { display: true, color: 'rgba(0,0,0,0.05)' },
+                min: 1,
+                max: 60, // Initial view: ~2 months
+                ticks: {
+                    callback: function (value) {
+                        const info = activeCharts.get(field);
+                        const y = info ? info.year : chartYear;
+                        const date = new Date(y, 0, value);
+                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                    },
+                    autoSkip: true,
+                    maxRotation: 0,
+                    minRotation: 0
+                }
+            } : {
+                // Weekly: use linear type for consistent styling
+                display: true,
+                type: 'linear',
+                title: { display: true, text: weekAxisTitle },
+                grid: { display: true, color: 'rgba(0,0,0,0.05)' },
+                min: 1,
+                max: 53,
+                ticks: {
+                    stepSize: 2, // Show 1, 3, 5... 53
+                    callback: function (value) {
+                        if (value % 2 === 1) return value;
+                        return null;
+                    }
+                }
+            };
+
+            // Create Chart.js instance
+            const ctx = canvas.getContext('2d');
+            const newChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'x',
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'x',
+                            }
+                        },
+                        legend: {
+                            display: upper && lower,
+                            labels: {
+                                filter: (item) => item.text === indicator.name || item.text.includes('σ')
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: (items) => {
+                                    if (isDaily) {
+                                        // 日指标：显示 "MM月DD日（周X）"
+                                        const dayOfYear = parseInt(items[0].label);
+                                        const week = Math.ceil(dayOfYear / 7);
+                                        // Convert day of year to date
+                                        const info = activeCharts.get(field);
+                                        const y = info ? info.year : chartYear;
+                                        const date = new Date(y, 0, dayOfYear);
+                                        const month = date.getMonth() + 1;
+                                        const day = date.getDate();
+                                        return `${month}月${day}日（周${week}）`;
+                                    }
+                                    // 周指标：显示 "第X周"
+                                    return `第${items[0].label}周`;
+                                },
+                                label: (context) => {
+                                    const datasetLabel = context.dataset.label || '';
+                                    const value = context.parsed.y;
+                                    if (value === null) return null;
+                                    if (datasetLabel.includes('σ')) {
+                                        return `${datasetLabel}: ${value.toFixed(2)} `;
+                                    }
+                                    return `${isDaily ? '当日值' : '样本平均值'}: ${value.toFixed(2)} `;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: xAxisConfig,
+                        y: {
+                            display: true,
+                            beginAtZero: false,
+                            grid: { display: true, color: 'rgba(0,0,0,0.05)' }
+                        }
+                    }
+                }
+            });
+
+            activeCharts.set(field, { chart: newChart, year: chartYear, isDaily: isDaily });
+        }
+
+        // Fetch and process data for a specific chart and year
+        async function fetchAndProcessForChart(field, year) {
+            if (!currentUser || currentUser.is_guest) {
+                return { labels: [], values: [], upper: null, lower: null, isDaily: false };
+            }
+
+            const indicator = indicators.find(ind => ind.field === field);
+            if (!indicator) return { labels: [], values: [], upper: null, lower: null, isDaily: false };
+
+            const frequency = indicator.frequency || 'weekly';
+            const isDaily = frequency === 'daily';
+            const tableName = isDaily ? 'daily_phenotypes' : 'weekly_phenotypes';
+
+            try {
+                const { data, error } = await supabase
+                    .from(tableName)
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .eq('project_name', currentProjectName)
+                    .eq('year', year)
+                    .order(isDaily ? 'date' : 'week', { ascending: true });
+
+                if (error) throw error;
+
+                // Process data differently for daily vs weekly
+                if (isDaily) {
+                    return processDailyDataFromRows(data || [], field, year);
+                } else {
+                    const result = processDataFromRows(data || [], field, indicator);
+                    return { ...result, isDaily: false };
+                }
+            } catch (err) {
+                console.error(`Error fetching data for ${field}: `, err);
+                return { labels: [], values: [], upper: null, lower: null, isDaily: false };
+            }
+        }
+
+        // Process daily data - one point per day, x-axis is day-of-year
+        function processDailyDataFromRows(rows, field, year, sampleName = '__ALL__') {
+            // Create array for 366 days (to cover leap years)
+            const dayData = {};
+
+            rows.forEach(row => {
+                // Sample filter
+                if (sampleName !== '__ALL__' && row.sample_name !== sampleName) {
+                    return; // Skip this row
+                }
+
+                const dateStr = row.date;
+                if (!dateStr) return;
+
+                let val = row[field];
+                // Try Chinese column name
+                if (val === undefined || val === null) {
+                    const cnName = translations['zh'].indicators[field];
+                    if (cnName) val = row[cnName];
+                }
+
+                if (val !== undefined && val !== null) {
+                    val = parseFloat(val);
+                    if (!isNaN(val)) {
+                        // Get day of year
+                        const date = new Date(dateStr);
+                        const startOfYear = new Date(year, 0, 1);
+                        const dayOfYear = Math.floor((date - startOfYear) / (24 * 60 * 60 * 1000)) + 1;
+
+                        if (!dayData[dayOfYear]) {
+                            dayData[dayOfYear] = { values: [], week: row.week };
+                        }
+                        dayData[dayOfYear].values.push(val);
+                    }
+                }
+            });
+
+            // Build arrays: labels are days 1-365, but we'll show week ticks
+            const labels = [];
+            const values = [];
+
+            // Only include days with data
+            const sortedDays = Object.keys(dayData).map(Number).sort((a, b) => a - b);
+
+            sortedDays.forEach(day => {
+                const info = dayData[day];
+                const vals = info.values;
+                if (vals.length > 0) {
+                    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+                    labels.push(day); // Day of year as x value
+                    values.push(mean);
+                }
+            });
+
+            return {
+                labels,
+                values,
+                upper: null,
+                lower: null,
+                isDaily: true,
+                year: year
+            };
+        }
+
+        // Process fetched rows into chart data
+        function processDataFromRows(rows, field, indicator, sampleName = '__ALL__') {
+            const weekData = new Array(54).fill(null).map(() => ({ values: [] }));
+
+            rows.forEach(row => {
+                // Sample filter
+                if (sampleName !== '__ALL__' && row.sample_name !== sampleName) {
+                    return; // Skip this row
+                }
+
+                const week = row.week;
+                let val = row[field];
+                // Try Chinese column name
+                if (val === undefined || val === null) {
+                    const cnName = translations['zh'].indicators[field];
+                    if (cnName) val = row[cnName];
+                }
+                if (val !== undefined && val !== null) {
+                    val = parseFloat(val);
+                    if (!isNaN(val) && week >= 1 && week <= 53) {
+                        weekData[week].values.push(val);
+                    }
+                }
+            });
+
+            // Calculate mean and std
+            const labels = [];
+            const values = [];
+            const upper = [];
+            const lower = [];
+
+            for (let w = 1; w <= 53; w++) {
+                labels.push(w);
+                const vals = weekData[w].values;
+                if (vals.length > 0) {
+                    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+                    values.push(mean);
+                    if (vals.length > 1) {
+                        const variance = vals.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / (vals.length - 1);
+                        const std = Math.sqrt(variance);
+                        upper.push(mean + std);
+                        lower.push(mean - std);
+                    } else {
+                        upper.push(mean);
+                        lower.push(mean);
+                    }
+                } else {
+                    values.push(null);
+                    upper.push(null);
+                    lower.push(null);
+                }
+            }
+
+            return { labels, values, upper, lower, isDaily: false };
+        }
+
+        // Update a single chart when its year changes
+        async function updateSingleChart(field) {
+            const chartInfo = activeCharts.get(field);
+            if (!chartInfo) return;
+
+            const { chart, year } = chartInfo;
+            const { labels, values, upper, lower } = await fetchAndProcessForChart(field, year);
+
+            // Update year display
+            const yearDisplay = document.getElementById(`year - display - ${field} `);
+            if (yearDisplay) yearDisplay.textContent = `${year} 年`;
+
+            // Update button labels
+            const wrapper = document.getElementById(`chart - wrapper - ${field} `);
+            if (wrapper) {
+                const buttons = wrapper.querySelectorAll('.chart-year-btn');
+                buttons.forEach(btn => {
+                    const dir = parseInt(btn.dataset.dir);
+                    btn.textContent = dir < 0 ? `◀ ${year + dir} ` : `${year + dir} ▶`;
+                });
+            }
+
+            // Update chart data
+            chart.data.datasets.forEach(ds => {
+                if (ds.label.includes('+σ') && upper) {
+                    ds.data = upper;
+                } else if (ds.label.includes('-σ') && lower) {
+                    ds.data = lower;
+                } else if (!ds.label.includes('σ')) {
+                    ds.data = values;
+                }
+            });
+
+            chart.update();
+        }
+
+        // Render chart for a specific card
+        async function renderCardChart(cardId) {
+            const cardInfo = chartCards.get(cardId);
+            if (!cardInfo || !cardInfo.field) return;
+
+            const { project, year, field, sample } = cardInfo;
+            const indicator = indicators.find(ind => ind.field === field);
+            if (!indicator) return;
+
+            const frequency = indicator.frequency || 'weekly';
+            const isDaily = frequency === 'daily';
+
+            // Fetch data for this specific card's project/year/sample
+            const { labels, values, upper, lower } = await fetchDataForCard(project, year, field, isDaily, sample || '__ALL__');
+
+            // Get chart container
+            const container = document.getElementById(`${cardId}-chartContainer`);
+            if (!container) return;
+
+            // Destroy existing chart
+            if (cardInfo.chart) {
+                cardInfo.chart.destroy();
+            }
+
+            // Create canvas
+            container.innerHTML = '<canvas></canvas>';
+            const canvas = container.querySelector('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Build datasets
+            const datasets = [];
+
+            // For weekly: add std bounds if available AND in aggregate mode
+            // Single sample doesn't have std, so no bounds needed
+            const isAggregateMode = (sample === '__ALL__' || !sample);
+            if (!isDaily && isAggregateMode && upper && lower && upper.some(v => v !== null)) {
+                datasets.push({
+                    label: '上界 (+σ)',
+                    data: upper,
+                    borderColor: 'transparent',
+                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                    borderWidth: 0,
+                    fill: '+1',
+                    pointRadius: 0,
+                    tension: 0.3,
+                    spanGaps: true
+                });
+            }
+
+            // Main line
+            datasets.push({
+                label: indicator.name,
+                data: values,
+                borderColor: isDaily ? '#8B5CF6' : '#10b981',
+                backgroundColor: isDaily ? 'rgba(139, 92, 246, 0.05)' : 'rgba(16, 185, 129, 0.05)',
+                borderWidth: 2.5,
+                tension: 0.3,
+                fill: false,
+                pointRadius: isDaily ? 3 : 4,
+                pointBackgroundColor: isDaily ? '#8B5CF6' : '#10b981',
+                pointBorderColor: 'white',
+                pointBorderWidth: 2,
+                spanGaps: true
+            });
+
+            if (!isDaily && isAggregateMode && upper && lower && lower.some(v => v !== null)) {
+                datasets.push({
+                    label: '下界 (-σ)',
+                    data: lower,
+                    borderColor: 'transparent',
+                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                    borderWidth: 0,
+                    fill: '-1',
+                    pointRadius: 0,
+                    tension: 0.3,
+                    spanGaps: true
+                });
+            }
+
+            // X-axis config
+            const tPage = translations[currentLang].trendsPage || {};
+            const dateAxisTitle = tPage.dateAxis || 'Date';
+            const weekAxisTitle = tPage.weekAxis || 'Week';
+
+            const xAxisConfig = isDaily ? {
+                display: true,
+                type: 'linear',
+                title: { display: true, text: dateAxisTitle },
+                grid: { display: true, color: 'rgba(0,0,0,0.05)' },
+                min: 1,
+                max: 60,
+                ticks: {
+                    maxRotation: 0,
+                    minRotation: 0,
+                    stepSize: 5,
+                    callback: function (value) {
+                        const date = new Date(year, 0, value);
+                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                    },
+                    autoSkip: true
+                }
+            } : {
+                display: true,
+                type: 'linear',
+                title: { display: true, text: weekAxisTitle },
+                grid: { display: true, color: 'rgba(0,0,0,0.05)' },
+                min: 1,
+                max: 53,
+                ticks: {
+                    stepSize: 2,
+                    autoSkip: true,
+                    maxRotation: 0,
+                    minRotation: 0,
+                    callback: function (value) {
+                        if (Number.isInteger(value)) return value;
+                    }
+                }
+            };
+
+            // Create chart
+            const newChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        zoom: {
+                            limits: {
+                                x: {
+                                    min: 1,
+                                    max: isDaily ? 366 : 53,
+                                    minRange: isDaily ? 7 : 4
+                                }
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'x',
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'x',
+                            }
+                        },
+                        legend: { display: !isDaily && upper && lower },
+                        tooltip: {
+                            callbacks: {
+                                title: (items) => {
+                                    if (isDaily) {
+                                        const dayOfYear = parseInt(items[0].label);
+                                        const week = Math.ceil(dayOfYear / 7);
+                                        const date = new Date(year, 0, dayOfYear);
+                                        return `${date.getMonth() + 1}月${date.getDate()}日（周${week}）`;
+                                    }
+                                    return `第${items[0].label}周`;
+                                },
+                                label: (context) => {
+                                    const value = context.parsed.y;
+                                    if (value === null) return null;
+                                    if (context.dataset.label.includes('σ')) {
+                                        return `${context.dataset.label}: ${value.toFixed(2)} `;
+                                    }
+                                    return `${isDaily ? '当日值' : '样本平均值'}: ${value.toFixed(2)} `;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: xAxisConfig,
+                        y: (() => {
+                            const cfg = {
+                                display: true,
+                                beginAtZero: false,
+                                grid: { display: true, color: 'rgba(0,0,0,0.05)' }
+                            };
+                            const allPts = [...values, ...(upper || []), ...(lower || [])].filter(v => typeof v === 'number');
+                            if (allPts.length > 0) {
+                                const dMin = Math.min(...allPts);
+                                const dMax = Math.max(...allPts);
+                                const range = dMax - dMin;
+                                const padding = range === 0 ? (dMax * 0.1 || 1) : (range * 0.1);
+                                let fMin = dMin - padding;
+                                let fMax = dMax + padding;
+                                if (dMin >= 0 && fMin < 0) fMin = 0;
+                                cfg.min = fMin;
+                                cfg.max = fMax;
+                            }
+                            return cfg;
+                        })()
+                    }
+                }
+            });
+
+            cardInfo.chart = newChart;
+        }
+
+        // Fetch data for a specific card's project/year/field
+        async function fetchDataForCard(project, year, field, isDaily, sampleName = '__ALL__') {
+            if (!currentUser || currentUser.is_guest) {
+                return { labels: [], values: [], upper: null, lower: null };
+            }
+
+            const tableName = isDaily ? 'daily_phenotypes' : 'weekly_phenotypes';
+
+            try {
+                const { data, error } = await supabase
+                    .from(tableName)
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .eq('project_name', project)
+                    .eq('year', year)
+                    .order(isDaily ? 'date' : 'week', { ascending: true });
+
+                if (error) throw error;
+
+                if (isDaily) {
+                    return processDailyDataFromRows(data || [], field, year, sampleName);
+                } else {
+                    const indicator = indicators.find(ind => ind.field === field);
+                    return processDataFromRows(data || [], field, indicator, sampleName);
+                }
+            } catch (err) {
+                console.error(`Error fetching data:`, err);
+                return { labels: [], values: [], upper: null, lower: null };
+            }
+        }
+
+        // Init
+        async function init() {
+            await initAuth();
+            await loadProjects();
+
+            // Add one default chart card
+            addNewChartCard();
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

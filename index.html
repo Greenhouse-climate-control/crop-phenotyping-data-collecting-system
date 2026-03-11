@@ -1,0 +1,1058 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>🌿 项目选择 - 得希表型采集系统</title>
+    <link rel="stylesheet" href="common.css?v=fix42">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 20px;
+        }
+
+        .project-card {
+            background: white;
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #065f46;
+            margin-bottom: 10px;
+            font-size: 1.8rem;
+        }
+
+        p {
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+
+        .project-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .project-btn {
+            background: #ffffff;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 22px 24px;
+            border-radius: 18px;
+            font-size: 1.15rem;
+            color: #1f2937;
+            /* Gray-800 */
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            /* Bounce effect */
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 0;
+            /* Handled by gap */
+        }
+
+        /* Gradient Accent Bar on Left */
+        .project-btn::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+            background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+        }
+
+        .project-btn:hover {
+            border-color: #34d399;
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px -5px rgba(16, 185, 129, 0.15);
+        }
+
+        .project-btn:active {
+            transform: scale(0.98);
+        }
+
+        .project-btn .arrow {
+            color: #d1d5db;
+            font-size: 1.2rem;
+            transition: all 0.2s;
+        }
+
+        .project-btn:hover .arrow {
+            color: #10b981;
+            transform: translateX(5px);
+        }
+
+        .new-project-form {
+            margin-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 20px;
+            display: none;
+            /* Hidden by default */
+        }
+
+        .new-project-form.visible {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #10b981;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.1s;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #6b7280;
+            border: none;
+            font-size: 0.9rem;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            color: #10b981;
+            text-decoration: underline;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #10b981;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Imported Styles from welcome.html */
+        .welcome-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: auto;
+            /* Adjusted */
+            padding: 20px;
+        }
+
+        .welcome-section {
+            text-align: center;
+            padding: 40px 20px 20px 20px;
+            margin-bottom: 0;
+        }
+
+        .welcome-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #059669, #047857, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+        }
+
+        .welcome-subtitle {
+            font-size: 1.1rem;
+            color: #064e3b;
+            opacity: 0.8;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 50px 40px;
+            box-shadow: 0 8px 32px rgba(5, 150, 105, 0.12);
+            border: 1px solid rgba(5, 150, 105, 0.15);
+            max-width: 450px;
+            width: 100%;
+        }
+
+        .login-title {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #059669, #047857, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .login-subtitle {
+            font-size: 1rem;
+            color: #047857;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: #064e3b;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #6ee7b7;
+            border-radius: 10px;
+            font-size: 1rem;
+            color: #064e3b;
+            background: white;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            margin-top: 10px;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-message {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+        }
+
+        .status-message.success {
+            background: rgba(16, 185, 129, 0.1);
+            color: #059669;
+            display: block;
+        }
+
+        .status-message.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            display: block;
+        }
+
+        .divider {
+            text-align: center;
+            margin: 25px 0;
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+
+            .project-card,
+            .login-card {
+                padding: 24px;
+                border-radius: 20px;
+                box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.08);
+                /* Softer shadow for mobile */
+            }
+
+            .logo {
+                font-size: 2.2rem;
+                margin-bottom: 15px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .project-btn {
+                padding: 16px 18px;
+                font-size: 1rem;
+                border-radius: 14px;
+            }
+
+            .project-btn .arrow {
+                font-size: 1rem;
+            }
+
+            /* Adjust login view elements if they share styles or specific overrides */
+            .welcome-title {
+                font-size: 2rem !important;
+                /* Force override if needed or ensure specificity */
+            }
+        }
+
+        @media (max-width: 480px) {
+
+            .project-card,
+            .login-card {
+                padding: 20px 16px;
+                border-radius: 16px;
+            }
+
+            .logo {
+                font-size: 1.8rem;
+                margin-bottom: 10px;
+            }
+
+            h1 {
+                font-size: 1.3rem;
+            }
+
+            p {
+                margin-bottom: 20px;
+                font-size: 0.9rem;
+            }
+
+            .project-btn {
+                padding: 14px 16px;
+                font-size: 0.95rem;
+                gap: 10px;
+            }
+
+            .input-field {
+                padding: 10px 14px;
+                font-size: 0.95rem;
+            }
+        }
+
+        /* Tab Button Styles */
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #6b7280;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: #059669;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-btn:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .tab-content {
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Top Right User Controls (Visible when logged in) -->
+    <div id="userControls"
+        style="position: fixed; top: 20px; right: 20px; z-index: 1000; display: none; background: rgba(255,255,255,0.9); padding: 8px 12px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+        <span id="userEmailDisplay"
+            style="margin-right: 12px; color: #065f46; font-size: 0.9rem; font-weight: 500;"></span>
+        <button onclick="handleLogout()"
+            style="padding: 6px 12px; border-radius: 8px; border: 1px solid #fab1a0; background: #fff0f0; color: #e17055; cursor: pointer; font-size: 0.85rem; transition: all 0.2s;">
+            🚪 退出
+        </button>
+    </div>
+
+    <!-- Login View (Visible when NOT logged in) -->
+    <div id="loginView"
+        style="display: none; width: 100%; max-width: 800px; margin: 0 auto; flex-direction: column; align-items: center; padding-top: 40px;">
+        <div class="welcome-section">
+            <h1 class="welcome-title">🌱 得希表型采集系统</h1>
+            <p class="welcome-subtitle">使用本系统记录和管理植物表型数据，助力精准农业研究与分析。</p>
+            <!-- GIF Display -->
+            <div
+                style="height: 250px; width: 100%; max-width: 600px; margin: 10px auto 0 auto; display: flex; align-items: center; justify-content: center;">
+                <img src="video.gif" alt="Logo Animation"
+                    style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 12px;"
+                    onerror="this.style.display='none'">
+            </div>
+        </div>
+        <div class="welcome-container" style="width: 100%;">
+            <div class="login-card">
+                <!-- Tab Buttons -->
+                <div
+                    style="display: flex; gap: 10px; margin-bottom: 20px; background: #f3f4f6; padding: 4px; border-radius: 12px;">
+                    <button type="button" class="tab-btn active" data-tab="login">登录</button>
+                    <button type="button" class="tab-btn" data-tab="register">注册</button>
+                    <button type="button" class="tab-btn" data-tab="reset">忘记密码</button>
+                </div>
+
+                <!-- Login Form -->
+                <div id="loginTab" class="tab-content">
+                    <h2 class="login-title">欢迎登录</h2>
+                    <p class="login-subtitle">请登录以访问系统功能</p>
+                    <form id="loginForm">
+                        <div class="form-group">
+                            <label class="form-label" for="loginEmail">📧 邮箱地址</label>
+                            <input type="email" id="loginEmail" class="form-input" placeholder="your@email.com"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="loginPassword">🔒 密码</label>
+                            <input type="password" id="loginPassword" class="form-input" placeholder="••••••••"
+                                required>
+                        </div>
+                        <button type="submit" class="login-btn" id="loginBtn">登录</button>
+                    </form>
+                </div>
+
+                <!-- Register Form -->
+                <div id="registerTab" class="tab-content" style="display: none;">
+                    <h2 class="login-title">注册新账号</h2>
+                    <p class="login-subtitle">创建您的账户</p>
+                    <form id="registerForm">
+                        <div class="form-group">
+                            <label class="form-label" for="registerEmail">📧 邮箱地址</label>
+                            <input type="email" id="registerEmail" class="form-input" placeholder="your@email.com"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="registerPassword">🔒 密码</label>
+                            <input type="password" id="registerPassword" class="form-input" placeholder="至少6位" required
+                                minlength="6">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="registerPasswordConfirm">🔒 确认密码</label>
+                            <input type="password" id="registerPasswordConfirm" class="form-input" placeholder="再次输入密码"
+                                required>
+                        </div>
+                        <button type="submit" class="login-btn" id="registerSubmitBtn"
+                            style="background: linear-gradient(135deg, #059669, #047857);">注册</button>
+                    </form>
+                </div>
+
+                <!-- Forgot Password Form -->
+                <div id="resetTab" class="tab-content" style="display: none;">
+                    <h2 class="login-title">重置密码</h2>
+                    <p class="login-subtitle">我们将发送重置链接到您的邮箱</p>
+                    <form id="resetPasswordForm">
+                        <div class="form-group">
+                            <label class="form-label" for="resetEmail">📧 邮箱地址</label>
+                            <input type="email" id="resetEmail" class="form-input" placeholder="your@email.com"
+                                required>
+                        </div>
+                        <button type="submit" class="login-btn" id="resetBtn"
+                            style="background: linear-gradient(135deg, #3b82f6, #2563eb);">发送重置链接</button>
+                    </form>
+                </div>
+
+                <div id="statusMessage" class="status-message"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Selection View (Visible when Logged In) -->
+    <div id="projectView" style="display: none; width: 100%; flex-direction: column; align-items: center;">
+        <div class="project-card">
+            <div class="logo">🌱</div>
+            <h1>选择工作项目<br><span style="font-size: 1rem; font-weight: normal; color: #6b7280;">Select Active
+                    Project</span></h1>
+
+            <div id="loadingExample" style="display: none; color: #6b7280;">
+                <div class="loader"></div> 加载中...
+            </div>
+
+            <!-- Deprecated authSection removed -->
+
+            <div id="projectSection" style="display: none;">
+                <div class="project-list" id="projectList">
+                    <!-- Projects will be injected here -->
+                </div>
+
+
+                <div id="createProjectSection" style="margin-top: 20px;">
+                    <button id="showCreateBtn" class="btn-secondary" onclick="toggleCreateForm(true)">+ 创建新项目 (Create
+                        New Project)</button>
+
+                    <div id="createProjectForm"
+                        style="display: none; background: #f9fafb; padding: 20px; border-radius: 12px; border: 1px solid #e5e7eb; margin-top: 10px;">
+                        <input type="text" id="newProjectName" class="form-input" placeholder="输入项目名称"
+                            style="margin-bottom: 15px; border: 1px solid #d1d5db;">
+                        <div style="display: flex; gap: 12px;">
+                            <button class="login-btn" onclick="submitNewProject()"
+                                style="flex: 1; padding: 12px; font-size: 0.95rem; background: #059669; margin-top: 0;">确认创建</button>
+                            <button class="login-btn" onclick="toggleCreateForm(false)"
+                                style="flex: 1; padding: 12px; font-size: 0.95rem; margin-top: 0; background: #ef4444; color: white;">取消</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="common.js?v=SUPER_FINAL_FIX_999"></script>
+    <script src="project-management.js"></script>
+    <script>
+        // Canonical app base URL for auth callbacks (prevents GitHub Pages root 404)
+        const APP_BASE_URL = window.location.hostname === 'jianchaoci.github.io'
+            ? 'https://jianchaoci.github.io/deci_data_collection'
+            : window.location.href.split('?')[0].split('#')[0].replace(/index\.html$/, '').replace(/\/$/, '');
+
+        // Init
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check both search params and hash for auth events
+            const urlParams = new URLSearchParams(window.location.search);
+            const hashParams = new URLSearchParams(window.location.hash.substring(1)); // Remove '#'
+
+            const type = urlParams.get('type') || hashParams.get('type');
+            const error = urlParams.get('error') || hashParams.get('error');
+            const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
+
+            // Check if this is an auth callback from email confirmation
+            // Support both: 1) Standard hash format, 2) Custom query param format (for GitHub Pages subdirectory)
+            const token = urlParams.get('token');
+            const email = urlParams.get('email');
+            const isAuthCallback = window.location.hash.includes('access_token') ||
+                window.location.hash.includes('recovery') ||
+                (token && type === 'signup');
+            // Handle Error case (e.g., link expired)
+            if (error === 'access_denied' || error) {
+                alert('❌ 验证失败: ' + (errorDescription || '链接已失效或已过有效期'));
+                window.history.replaceState({}, document.title, window.location.pathname);
+                window.location.reload();
+                return;
+            }
+
+            if (isAuthCallback) {
+                // Handle both standard and custom email link formats
+
+                try {
+                    // If using custom query params (our GitHub Pages workaround), verify explicitly
+                    if (token && type === 'signup' && email) {
+                        const { error } = await supabase.auth.verifyOtp({
+                            token: token,
+                            type: 'signup',
+                            email: email
+                        });
+                        if (error) throw error;
+                    } else {
+                        // Standard hash format - give SDK time to auto-process
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+
+                    // Now sign out to ensure clean state
+                    await supabase.auth.signOut();
+                    localStorage.clear();
+                    sessionStorage.clear();
+
+                    // Show success message
+                    alert('✅ 邮箱验证成功！\n请现在使用您的账号密码登录。');
+
+                    // Force redirect to index.html login page
+                    window.location.href = APP_BASE_URL + '/index.html';
+                } catch (e) {
+                    console.error('Auth callback error:', e);
+                    alert('❌ 验证过程出错: ' + (e.message || '请重试'));
+                    window.location.href = APP_BASE_URL + '/index.html';
+                }
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+
+            const loginView = document.getElementById('loginView');
+            const projectView = document.getElementById('projectView');
+            const userControls = document.getElementById('userControls');
+            const userEmailDisplay = document.getElementById('userEmailDisplay');
+
+            if (!session) {
+                // Not logged in: Show Login View
+                if (loginView) loginView.style.display = 'flex';
+                if (projectView) projectView.style.display = 'none';
+                if (userControls) userControls.style.display = 'none';
+
+                setupLoginHandlers();
+            } else {
+                // Logged in: Show Project View
+                if (loginView) loginView.style.display = 'none';
+                if (projectView) projectView.style.display = 'flex';
+
+                if (userControls && session.user) {
+                    userControls.style.display = 'flex';
+                    userEmailDisplay.textContent = session.user.email;
+                }
+
+                currentUser = session.user;
+                // document.getElementById('projectSection').style.display = 'block'; // Handled by projectView container
+                document.getElementById('projectSection').style.display = 'block';
+                loadProjects();
+            }
+        });
+
+        async function handleLogout() {
+            try {
+                await supabase.auth.signOut();
+            } catch (e) {
+                console.error('Logout error:', e);
+            }
+            localStorage.clear();
+            window.location.reload(); // Reload to show login view
+        }
+
+        async function loadProjects() {
+            const listFn = document.getElementById('projectList');
+            listFn.innerHTML = '<div style="color:#999; padding: 20px;">正在获取项目列表...</div>';
+
+            try {
+                const { data, error } = await supabase
+                    .from('facility_settings')
+                    .select('project_name')
+                    .eq('user_id', currentUser.id);
+
+                if (error) throw error;
+
+                const projects = data.map(p => p.project_name);
+                renderProjects(projects);
+            } catch (err) {
+                console.error(err);
+                renderProjects([]);
+            }
+        }
+
+        function renderProjects(projects) {
+            const listFn = document.getElementById('projectList');
+            listFn.innerHTML = '';
+
+            if (projects.length === 0) {
+                return;
+            }
+
+            projects.forEach((name, index) => {
+                const btn = document.createElement('div');
+                btn.className = 'project-btn';
+                btn.dataset.projectName = name; // Store project name for menu actions
+
+                // Determine Icon
+                let icon = '📊';
+                if (name.includes('温室')) icon = '🏡';
+                if (name.includes('实验')) icon = '🔬';
+                if (name.includes('田间')) icon = '🌾';
+
+                btn.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <div style="font-size:1.5rem; background:#f0fdf4; width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:10px;">${icon}</div>
+                        <div style="display:flex; flex-direction:column; align-items:flex-start;">
+                            <span style="font-size:1.1rem; color:#111827; font-weight: 500;">${name}</span>
+                        </div>
+                    </div>
+                    <span class="arrow">➜</span>
+                `;
+
+                // Regular click to select project
+                btn.onclick = () => selectProject(name);
+
+                // Long press to show menu (mobile)
+                let pressTimer = null;
+                btn.addEventListener('touchstart', (e) => {
+                    pressTimer = setTimeout(() => {
+                        e.preventDefault();
+                        showProjectMenu(name, e.touches[0].clientX, e.touches[0].clientY);
+                    }, 500);
+                });
+                btn.addEventListener('touchend', () => {
+                    clearTimeout(pressTimer);
+                });
+                btn.addEventListener('touchmove', () => {
+                    clearTimeout(pressTimer);
+                });
+
+                // Right click to show menu (desktop)
+                btn.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    showProjectMenu(name, e.clientX, e.clientY);
+                });
+
+                listFn.appendChild(btn);
+            });
+        }
+
+        function toggleCreateForm(show) {
+            const form = document.getElementById('createProjectForm');
+            const btn = document.getElementById('showCreateBtn');
+            const input = document.getElementById('newProjectName');
+
+            if (show) {
+                form.style.display = 'block';
+                btn.style.display = 'none';
+                input.focus();
+            } else {
+                form.style.display = 'none';
+                btn.style.display = 'block';
+                input.value = '';
+            }
+        }
+
+        async function submitNewProject() {
+            const input = document.getElementById('newProjectName');
+            const projectName = input.value.trim();
+
+            if (!projectName) {
+                alert('请输入项目名称');
+                return;
+            }
+
+            const submitBtn = document.querySelector('#createProjectForm .login-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '创建中...';
+
+            try {
+                // Check if project exists
+                const { data: existing } = await supabase
+                    .from('facility_settings')
+                    .select('project_name')
+                    .eq('project_name', projectName)
+                    .eq('user_id', currentUser.id)
+                    .single();
+
+                if (existing) {
+                    alert('项目名称已存在，请换一个名称。');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '确认创建';
+                    return;
+                }
+
+                const { error } = await supabase
+                    .from('facility_settings')
+                    .insert({
+                        project_name: projectName,
+                        user_id: currentUser.id
+                    });
+
+                if (error) throw error;
+
+                alert('项目创建成功！');
+                toggleCreateForm(false);
+                loadProjects(); // Refresh list
+            } catch (err) {
+                console.error('Create project error:', err);
+                alert('创建失败: ' + err.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '确认创建';
+            }
+        }
+
+        function createProject() {
+            toggleCreateForm(true);
+            // Scroll to form if needed
+            document.getElementById('createProjectSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function selectProject(name) {
+            localStorage.setItem('currentProject', name);
+            localStorage.setItem('lastProjectName', name);
+            // Use full path to avoid GitHub Pages subdirectory 404
+            window.location.href = APP_BASE_URL + '/collection.html';
+        }
+
+        // --- Login Handlers (Integrated) ---
+        function setupLoginHandlers() {
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const resetPasswordForm = document.getElementById('resetPasswordForm');
+
+            function showMessage(msg, isSuccess) {
+                const el = document.getElementById('statusMessage');
+                el.textContent = msg;
+                el.className = 'status-message ' + (isSuccess ? 'success' : 'error');
+                el.style.display = 'block';
+            }
+
+            function hideMessage() {
+                const el = document.getElementById('statusMessage');
+                el.style.display = 'none';
+            }
+
+            // Tab Switching
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Update active button
+                    tabButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    // Show corresponding tab content
+                    const tab = btn.dataset.tab;
+                    document.getElementById('loginTab').style.display = tab === 'login' ? 'block' : 'none';
+                    document.getElementById('registerTab').style.display = tab === 'register' ? 'block' : 'none';
+                    document.getElementById('resetTab').style.display = tab === 'reset' ? 'block' : 'none';
+                    hideMessage();
+                });
+            });
+
+            // Login
+            if (loginForm) {
+                loginForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const email = document.getElementById('loginEmail').value.trim();
+                    const password = document.getElementById('loginPassword').value;
+                    const loginBtn = document.getElementById('loginBtn');
+
+                    if (!email || !password) return;
+
+                    loginBtn.disabled = true;
+                    loginBtn.textContent = '登录中...';
+                    hideMessage();
+
+                    try {
+                        const { data, error } = await supabase.auth.signInWithPassword({
+                            email, password
+                        });
+                        if (error) {
+                            let msg = error.message;
+                            if (msg === 'Invalid login credentials' || msg.includes('User not found')) {
+                                msg = '❌ 账号或密码错误';
+                            } else if (msg.includes('Email not confirmed')) {
+                                msg = '⚠️ 该邮箱尚未通过验证，请去您的邮箱查收激活链接。';
+                            } else if (error.status === 429) {
+                                msg = '⏳ 尝试过于频繁，请稍候再试。';
+                            } else {
+                                msg = '❌ 登录失败: ' + error.message;
+                            }
+                            throw new Error(msg);
+                        }
+                        showMessage('登录成功！正在进入...', true);
+                        setTimeout(() => window.location.reload(), 800);
+                    } catch (error) {
+                        console.error('Login error:', error);
+                        showMessage(error.message, false);
+                        loginBtn.disabled = false;
+                        loginBtn.textContent = '登录';
+                    }
+                });
+            }
+
+            // Register
+            if (registerForm) {
+                registerForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const email = document.getElementById('registerEmail').value.trim();
+                    const password = document.getElementById('registerPassword').value;
+                    const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+                    const registerBtn = document.getElementById('registerSubmitBtn');
+
+                    if (password !== passwordConfirm) {
+                        showMessage('两次密码输入不一致', false);
+                        return;
+                    }
+
+                    registerBtn.disabled = true;
+                    registerBtn.textContent = '注册中...';
+                    hideMessage();
+
+                    try {
+                        const { data, error } = await supabase.auth.signUp({
+                            email, password,
+                            options: {
+                                // 关键修复：移除 ?type=signup，因为这会导致与白名单精确匹配失败！
+                                // 匹配失败后，Supabase 会 fallback 到错误的路径。
+                                // 修改后地址与您的白名单“字字对应”。
+                                redirectTo: 'https://jianchaoci.github.io/deci_data_collection/index.html'
+                            }
+                        });
+                        if (error) throw error;
+
+
+                        // Check if user already exists
+                        if (data.user && data.user.identities && data.user.identities.length === 0) {
+                            showMessage('该邮箱已注册，请直接登录', false);
+                            registerBtn.disabled = false;
+                            registerBtn.textContent = '注册';
+                            return;
+                        }
+
+                        // Registration successful
+                        // 强制登出并彻底清除本地缓存，确保用户必须通过邮件验证后才能从登录页面进入
+                        await supabase.auth.signOut();
+                        for (let key in localStorage) {
+                            if (key.includes('supabase.auth.token')) {
+                                localStorage.removeItem(key);
+                            }
+                        }
+
+                        if (data.session) {
+                            // 即使返回了 session (有些配置会自动返回), 我们也提示需要验证并重定向
+                            showMessage('✅ 注册成功！请查收邮件验证后登录。', true);
+                        } else {
+                            // 标准流程：Email confirmation required
+                            showMessage('✅ 注册成功！请查收邮件验证后登录。', true);
+                        }
+
+                        // Switch to login tab after 2 seconds
+                        setTimeout(() => {
+                            // Click login tab
+                            const loginTabBtn = document.querySelector('[data-tab="login"]');
+                            if (loginTabBtn) loginTabBtn.click();
+
+                            // Reset form
+                            registerBtn.disabled = false;
+                            registerBtn.textContent = '注册';
+                            document.getElementById('registerForm').reset();
+                        }, 2000);
+
+                    } catch (error) {
+                        showMessage('注册失败: ' + error.message, false);
+                        registerBtn.disabled = false;
+                        registerBtn.textContent = '注册';
+                    }
+                });
+            }
+
+            // Forgot Password
+            if (resetPasswordForm) {
+                resetPasswordForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const email = document.getElementById('resetEmail').value.trim();
+                    const resetBtn = document.getElementById('resetBtn');
+
+                    resetBtn.disabled = true;
+                    resetBtn.textContent = '发送中...';
+                    hideMessage();
+
+                    try {
+                        // 关键：将当前邮箱保存到本地，防止重定向丢失参数
+                        localStorage.setItem('reset_email', email);
+
+                        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                            // 同样强制硬编码重置路径，彻底消灭 404
+                            redirectTo: 'https://jianchaoci.github.io/deci_data_collection/reset-password.html'
+                        });
+                        if (error) throw error;
+
+                        showMessage('重置链接已发送到您的邮箱！', true);
+                        resetBtn.disabled = false;
+                        resetBtn.textContent = '发送重置链接';
+                    } catch (error) {
+                        showMessage('发送失败: ' + error.message, false);
+                        resetBtn.disabled = false;
+                        resetBtn.textContent = '发送重置链接';
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+
+</html>
