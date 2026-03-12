@@ -371,7 +371,21 @@
                             labels: { usePointStyle: true, pointStyle: 'rectRounded' }
                         },
                         tooltip: {
+                            mode: 'nearest',
+                            intersect: true,
                             callbacks: {
+                                title: function (tooltipItems) {
+                                    const item = tooltipItems[0];
+                                    const dayNum = days[item.dataIndex];
+                                    const year = currentMonthDate.getFullYear();
+                                    const month = currentMonthDate.getMonth() + 1;
+                                    if (item.datasetIndex === 1 && weeklyMap[dayNum]) {
+                                        return currentLang === 'zh' ? `第${weeklyMap[dayNum]}周` : `Week ${weeklyMap[dayNum]}`;
+                                    }
+                                    return currentLang === 'zh'
+                                        ? `${year}年${month}月${dayNum}日`
+                                        : `${currentMonthDate.toLocaleString('en-US', { month: 'short' })} ${dayNum}, ${year}`;
+                                },
                                 label: function (context) {
                                     return context.dataset.label + ': ' + (context.raw > 0 ? '✅' : '-');
                                 }
@@ -420,7 +434,7 @@
                 // 2. Fetch Weekly Data (by created_at)
                 // Note: Weekly data doesn't have a 'date' column, so we use 'created_at'.
                 const weeklyRes = await supabase.from('weekly_phenotypes')
-                    .select('created_at')
+                    .select('created_at, week')
                     .eq('user_id', currentUser.id)
                     .eq('project_name', currentProject) // Filter by project
                     .gte('created_at', wrapperDateToISO(startDate)) // Use approximate ISO range
@@ -451,7 +465,7 @@
                         // Convert UTC timestamp to Beijing time (UTC+8)
                         const utcDate = new Date(row.created_at);
                         const beijingDate = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
-                        weeklyMap[beijingDate.getUTCDate()] = true;
+                        weeklyMap[beijingDate.getUTCDate()] = row.week;
                     });
                 }
 
