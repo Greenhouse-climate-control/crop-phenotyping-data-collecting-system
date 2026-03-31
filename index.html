@@ -610,8 +610,8 @@
     <script src="project-management.js"></script>
     <script>
         // Canonical app base URL for auth callbacks (prevents GitHub Pages root 404)
-        const APP_BASE_URL = window.location.hostname === 'jianchaoci.github.io'
-            ? 'https://jianchaoci.github.io/deci_data_collection'
+        const APP_BASE_URL = window.location.hostname === 'greenhouse-climate-control.github.io'
+            ? 'https://greenhouse-climate-control.github.io/deci_data_collection'
             : window.location.href.split('?')[0].split('#')[0].replace(/index\.html$/, '').replace(/\/$/, '');
 
         // Init
@@ -996,7 +996,7 @@
                                 // 关键修复：移除 ?type=signup，因为这会导致与白名单精确匹配失败！
                                 // 匹配失败后，Supabase 会 fallback 到错误的路径。
                                 // 修改后地址与您的白名单“字字对应”。
-                                redirectTo: 'https://jianchaoci.github.io/deci_data_collection/index.html'
+                                redirectTo: 'https://greenhouse-climate-control.github.io/crop-phenotyping-data-collecting-system/index.html'
                             }
                         });
                         if (error) throw error;
@@ -1064,7 +1064,7 @@
 
                         const { error } = await supabase.auth.resetPasswordForEmail(email, {
                             // 同样强制硬编码重置路径，彻底消灭 404
-                            redirectTo: 'https://jianchaoci.github.io/deci_data_collection/reset-password.html'
+                            redirectTo: 'https://greenhouse-climate-control.github.io/crop-phenotyping-data-collecting-system/reset-password.html'
                         });
                         if (error) throw error;
 

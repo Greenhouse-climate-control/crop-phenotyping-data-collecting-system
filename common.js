@@ -3,8 +3,10 @@
 // ====================================
 
 // Supabase Configuration
-var SUPABASE_URL = 'https://urzueqrbilvqzgghdzrl.supabase.co';
-var SUPABASE_ANON_KEY = 'sb_publishable_nLO14_i3nMU4gF7Q7ZQNPw_9Wr3wqnS';
+// var SUPABASE_URL = 'https://urzueqrbilvqzgghdzrl.supabase.co';
+// var SUPABASE_ANON_KEY = 'sb_publishable_nLO14_i3nMU4gF7Q7ZQNPw_9Wr3wqnS';
+var SUPABASE_URL = 'https://orfoezghwcrcvzabdmbj.supabase.co';
+var SUPABASE_ANON_KEY = 'sb_publishable_Z4_Enielum_UaGUMCHz2bQ_TVNzd4x6';
 
 // Initialize Supabase client
 // Check if client is already initialized (has .from method) to prevent re-initialization error
